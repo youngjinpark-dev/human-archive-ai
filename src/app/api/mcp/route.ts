@@ -7,6 +7,7 @@
 
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
+import { isInitializeRequest } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 import { createServiceClient } from "@/lib/supabase/server";
 import { hashApiKey } from "@/lib/api-key";
@@ -364,20 +365,45 @@ export async function POST(request: Request) {
     return transport.handleRequest(request);
   }
 
-  // 새 세션 생성
+  // 세션 ID가 있지만 서버에 없는 경우 (만료/인스턴스 변경)
+  // → 클라이언트에게 세션 재시작을 알림 (MCP 스펙: 404 반환)
+  if (sessionId) {
+    return new Response(
+      JSON.stringify({
+        jsonrpc: "2.0",
+        error: { code: -32000, message: "Session expired. Please reconnect." },
+        id: null,
+      }),
+      { status: 404, headers: { "Content-Type": "application/json" } }
+    );
+  }
+
+  // 새 세션은 initialize 요청일 때만 생성
+  const body = await request.json();
+  if (!isInitializeRequest(body)) {
+    return new Response(
+      JSON.stringify({
+        jsonrpc: "2.0",
+        error: { code: -32000, message: "Bad Request: expected initialize" },
+        id: null,
+      }),
+      { status: 400, headers: { "Content-Type": "application/json" } }
+    );
+  }
+
   const transport = new WebStandardStreamableHTTPServerTransport({
     sessionIdGenerator: () => crypto.randomUUID(),
     onsessioninitialized: (newSessionId) => {
       sessions.set(newSessionId, { transport, server });
-      // 5분 후 세션 정리
-      setTimeout(() => sessions.delete(newSessionId), 5 * 60 * 1000);
+      // 10분 후 세션 정리
+      setTimeout(() => sessions.delete(newSessionId), 10 * 60 * 1000);
     },
   });
 
   const server = createMcpServer(apiKey);
   await server.connect(transport);
 
-  return transport.handleRequest(request);
+  return transport.handleRequest(request, { parsedBody: body });
 }
 
 // ============================================================
