@@ -1,39 +1,20 @@
 import { extract } from "@/lib/llm";
 import type { ExtractionResult } from "@/types";
 
-const EXTRACT_AXES_PROMPT = `이 텍스트에서 전문가의 판단 축(의사결정 시 고려하는 핵심 기준)을 추출하세요.
+const EXTRACT_ALL_PROMPT = `이 텍스트에서 전문가의 판단 프레임워크 요소를 한 번에 추출하세요.
 
-각 축에 대해:
-- name: 축 이름 (간결하게, 예: "확장성", "운영 복잡도")
-- description: 이 축이 의미하는 것
-- weight: 이 전문가가 얼마나 중시하는지 (0~1, 언급 빈도와 강조 정도로 추정)
-- domain: 적용 분야 (null이면 범용)
+3가지를 추출합니다:
 
-JSON 배열로만 응답:
-[{"name": "...", "description": "...", "weight": 0.8, "domain": null}]`;
+1. axes (판단 축): 의사결정 시 고려하는 핵심 기준
+2. patterns (판단 패턴): If-Then 규칙
+3. stories (경험 스토리): 구체적 경험 에피소드
 
-const EXTRACT_PATTERNS_PROMPT = `이 텍스트에서 전문가의 판단 패턴(If-Then 규칙)을 추출하세요.
-
-각 패턴에 대해:
-- condition: 조건 ("IF ..." 형식, 구체적으로)
-- action: 행동 ("THEN ..." 형식, 실행 가능하게)
-- reasoning: 이 패턴의 근거 (전문가가 왜 이렇게 하는지)
-
-JSON 배열로만 응답:
-[{"condition": "팀 규모 5명 미만이고 데드라인 6개월 이내", "action": "팀이 익숙한 기술 선택", "reasoning": "학습 비용이 프로젝트 리스크 증가"}]`;
-
-const EXTRACT_STORIES_PROMPT = `이 텍스트에서 전문가의 구체적 경험 스토리를 추출하세요.
-
-각 스토리에 대해:
-- title: 제목 (한 줄 요약)
-- summary: 요약 (2~3문장)
-- context: 상황 배경 (어떤 상황이었는지)
-- decision: 당시의 판단 (무엇을 결정했는지)
-- outcome: 결과 (어떻게 되었는지, 모르면 null)
-- lesson: 교훈 (이 경험에서 배운 것)
-
-JSON 배열로만 응답:
-[{"title": "...", "summary": "...", "context": "...", "decision": "...", "outcome": "...", "lesson": "..."}]`;
+없는 항목은 빈 배열로 응답하세요. JSON으로만 응답:
+{
+  "axes": [{"name": "축이름", "description": "설명", "weight": 0.8, "domain": null}],
+  "patterns": [{"condition": "IF 조건", "action": "THEN 행동", "reasoning": "근거"}],
+  "stories": [{"title": "제목", "summary": "요약", "context": "상황", "decision": "판단", "outcome": "결과 또는 null", "lesson": "교훈 또는 null"}]
+}`;
 
 interface RawAxis {
   name: string;
@@ -70,14 +51,16 @@ export async function extractJudgmentPatterns(
       ? `\n\n기존 판단 축: ${existingAxesNames.join(", ")}. 기존 축과 동일하면 새로 추출하지 말고, 보강 근거로만 추출하세요.`
       : "";
 
-  // 순차 호출로 rate limit 방지
-  const rawAxes = await extract<RawAxis[]>(text, EXTRACT_AXES_PROMPT + contextHint);
-  const rawPatterns = await extract<RawPattern[]>(text, EXTRACT_PATTERNS_PROMPT);
-  const rawStories = await extract<RawStory[]>(text, EXTRACT_STORIES_PROMPT);
+  // 1회 LLM 호출로 3가지 동시 추출 (rate limit + timeout 방지)
+  const rawResult = await extract<{
+    axes?: RawAxis[];
+    patterns?: RawPattern[];
+    stories?: RawStory[];
+  }>(text, EXTRACT_ALL_PROMPT + contextHint);
 
-  const axes = Array.isArray(rawAxes) ? rawAxes : [];
-  const patterns = Array.isArray(rawPatterns) ? rawPatterns : [];
-  const stories = Array.isArray(rawStories) ? rawStories : [];
+  const axes = Array.isArray(rawResult?.axes) ? rawResult.axes : [];
+  const patterns = Array.isArray(rawResult?.patterns) ? rawResult.patterns : [];
+  const stories = Array.isArray(rawResult?.stories) ? rawResult.stories : [];
 
   // 기존 축과 매칭하여 신규/보강 분류
   const newAxes: ExtractionResult["newAxes"] = [];

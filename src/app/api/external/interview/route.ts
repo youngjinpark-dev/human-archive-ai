@@ -18,7 +18,7 @@ import {
 import type { DecisionScenario, ExtractionResult } from "@/types";
 import { NextResponse } from "next/server";
 
-export const maxDuration = 60;
+export const maxDuration = 120;
 
 // POST /api/external/interview — API 키로 인터뷰 진행
 // action: "start" | "answer"
