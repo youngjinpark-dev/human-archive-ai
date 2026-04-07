@@ -11,12 +11,17 @@ export function buildSystemPrompt(
 ): string {
   const sections: string[] = [];
 
-  // 기본 정체성
-  const domainStr = persona.domain
-    ? ` (${persona.domain} 분야 전문가)`
-    : "";
+  // 기본 정체성 — 전문가 본인으로서 대화
+  const domainStr = persona.domain ? `${persona.domain} 분야의 ` : "";
   sections.push(
-    `당신은 '${persona.name}'입니다.${domainStr}\n${persona.description ?? ""}`
+    `당신은 ${domainStr}전문가 '${persona.name}'입니다. 당신은 실제 ${persona.name}처럼 대화합니다.
+${persona.description ?? ""}
+
+대화할 때 지켜야 할 것:
+- 1인칭으로 말하세요. "저는", "제 경험에 의하면" 등.
+- 당신의 판단 원칙과 경험에 기반하여 자신만의 관점을 전달하세요.
+- 일반적인 정보 나열이 아니라, '${persona.name}'이라면 어떻게 판단할지를 답하세요.
+- AI라는 사실을 먼저 밝히지 마세요. 질문받으면 솔직히 답하되, 스스로 언급하지 마세요.`
   );
 
   // === 프레임워크 있는 경우: 새 섹션 추가 ===
@@ -51,27 +56,24 @@ export function buildSystemPrompt(
     }
   }
 
-  // === 프레임워크 없는 경우: 기존 로직 유지 ===
-  if (!frameworkData) {
-    // 핵심 판단 원칙
-    if (persona.principles && persona.principles.length > 0) {
-      const principlesText = persona.principles
-        .map((p, i) => `${i + 1}. ${p}`)
-        .join("\n");
-      sections.push(`## 핵심 판단 원칙\n${principlesText}`);
-    }
+  // === 핵심 판단 원칙 (프레임워크 유무와 무관하게 항상 포함) ===
+  if (persona.principles && persona.principles.length > 0) {
+    const principlesText = persona.principles
+      .map((p, i) => `${i + 1}. ${p}`)
+      .join("\n");
+    sections.push(`## 핵심 판단 원칙\n${principlesText}`);
+  }
 
-    // 의사결정 시나리오
-    if (persona.decision_scenarios && persona.decision_scenarios.length > 0) {
-      let scenariosText = "";
-      for (const ds of persona.decision_scenarios) {
-        const reasoning = ds.reasoning ? ` (근거: ${ds.reasoning})` : "";
-        scenariosText += `- 상황: ${ds.situation}\n  → 판단: ${ds.decision}${reasoning}\n`;
-      }
-      sections.push(
-        `## 의사결정 시나리오 (이런 상황에서는 이렇게 판단합니다)\n${scenariosText}`
-      );
+  // === 의사결정 시나리오 ===
+  if (persona.decision_scenarios && persona.decision_scenarios.length > 0) {
+    let scenariosText = "";
+    for (const ds of persona.decision_scenarios) {
+      const reasoning = ds.reasoning ? ` (근거: ${ds.reasoning})` : "";
+      scenariosText += `- 상황: ${ds.situation}\n  → 판단: ${ds.decision}${reasoning}\n`;
     }
+    sections.push(
+      `## 의사결정 시나리오 (이런 상황에서는 이렇게 판단합니다)\n${scenariosText}`
+    );
   }
 
   // 대화 스타일 (둘 다 공통)
@@ -79,23 +81,12 @@ export function buildSystemPrompt(
     sections.push(`## 대화 스타일\n${persona.style}`);
   }
 
-  // 규칙
-  if (frameworkData) {
-    sections.push(`## 중요한 규칙
-1. 위 판단 축과 패턴을 기반으로 구조화된 판단을 제공하세요.
-2. 판단 시 적용한 축과 패턴을 명시하세요.
-3. 해당 상황에 직접 매칭되는 패턴이 없으면, 가장 유사한 원칙을 기반으로 추론하세요.
-4. '${persona.name}'의 말투와 관점을 일관되게 유지하세요.
-5. 당신이 AI 페르소나임을 숨기지 마세요. 질문받으면 솔직히 밝히세요.
-6. 판단 원칙에도 없고 참고 자료에도 없는 내용은 "해당 내용은 제 경험 범위 밖입니다"라고 답하세요.`);
-  } else {
-    sections.push(`## 중요한 규칙
-1. 위 판단 원칙과 의사결정 시나리오를 기반으로, 전문가의 관점에서 조언하세요.
-2. 아래 [보조 참고 자료]가 있으면 참고하되, 핵심은 판단 원칙입니다.
-3. '${persona.name}'의 말투와 관점을 일관되게 유지하세요.
-4. 당신이 AI 페르소나임을 숨기지 마세요. 질문받으면 솔직히 밝히세요.
-5. 판단 원칙에도 없고 참고 자료에도 없는 내용은 "해당 내용은 제 경험 범위 밖입니다"라고 답하세요.`);
-  }
+  // 응답 규칙
+  sections.push(`## 응답 규칙
+1. 판단 축, 패턴, 원칙을 종합하여 '${persona.name}' 본인의 관점으로 답하세요.
+2. 판단 근거를 자연스럽게 녹여서 설명하세요. 딱딱한 목록 나열보다 대화체를 선호하세요.
+3. 참고 자료가 있으면 활용하되, 핵심은 당신의 판단 원칙입니다.
+4. 경험 범위 밖의 질문에는 "그 부분은 제 전문 영역이 아니라서요"라고 솔직히 답하세요.`);
 
   // 보조 참고 자료 (RAG)
   if (context && context !== "(관련 자료 없음)") {
