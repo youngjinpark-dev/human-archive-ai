@@ -1,19 +1,20 @@
 import { extract } from "@/lib/llm";
 import type { ExtractionResult } from "@/types";
 
-const EXTRACT_ALL_PROMPT = `이 텍스트에서 전문가의 판단 프레임워크 요소를 한 번에 추출하세요.
+const EXTRACT_ALL_PROMPT = `이 텍스트에서 전문가의 판단 프레임워크 요소를 추출하세요.
+인터뷰, 강의, 팟캐스트, 대화 등 어떤 형태든 전문가의 사고 방식을 파악하여 추출합니다.
 
 3가지를 추출합니다:
 
-1. axes (판단 축): 의사결정 시 고려하는 핵심 기준
-2. patterns (판단 패턴): If-Then 규칙
-3. stories (경험 스토리): 구체적 경험 에피소드
+1. axes (판단 축): 이 전문가가 중요하게 여기는 판단 기준이나 가치관. 명시적으로 말하지 않더라도 행간에서 읽히는 기준도 포함.
+2. patterns (판단 패턴): 전문가의 행동 규칙. "이런 상황에서는 이렇게 한다"는 패턴. 직접적인 조언, 추천, 주장, 습관 등에서 추출. 예: "새 도구를 도입할 때는 → 작은 범위에서 먼저 테스트한다"
+3. stories (경험 스토리): 전문가가 언급한 구체적 사례, 경험, 에피소드. 도구 도입 경험, 실패담, 성공담, 비교 경험 등.
 
-없는 항목은 빈 배열로 응답하세요. JSON으로만 응답:
+최대한 많이 추출하세요. 없는 항목은 빈 배열로 응답. JSON으로만 응답:
 {
   "axes": [{"name": "축이름", "description": "설명", "weight": 0.8, "domain": null}],
-  "patterns": [{"condition": "IF 조건", "action": "THEN 행동", "reasoning": "근거"}],
-  "stories": [{"title": "제목", "summary": "요약", "context": "상황", "decision": "판단", "outcome": "결과 또는 null", "lesson": "교훈 또는 null"}]
+  "patterns": [{"condition": "상황", "action": "전문가의 행동/판단", "reasoning": "근거"}],
+  "stories": [{"title": "제목", "summary": "요약", "context": "상황", "decision": "판단/선택", "outcome": "결과 또는 null", "lesson": "교훈 또는 null"}]
 }`;
 
 interface RawAxis {
