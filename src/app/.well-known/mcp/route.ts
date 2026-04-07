@@ -63,18 +63,59 @@ export async function GET() {
       {
         name: "persona_list",
         description:
-          "API 키에 연결된 페르소나 목록을 조회합니다. 파라미터 없음.",
+          "API 키에 연결된 페르소나 목록을 조회합니다. 파라미터 없음. 페르소나가 없으면 생성 안내를 반환합니다.",
+      },
+      {
+        name: "persona_create",
+        description:
+          "새 전문가 페르소나를 생성합니다. 생성 후 interview나 upload_audio로 지식을 아카이빙할 수 있습니다.",
+        parameters: {
+          name: "페르소나 이름 (필수)",
+          domain: "전문 분야 (선택)",
+          description: "페르소나 설명 (선택)",
+          style: "대화 스타일 (선택)",
+        },
+      },
+      {
+        name: "interview",
+        description:
+          "9개의 구조화된 질문(전문분야 2, 판단원칙 3, 의사결정 시나리오 3, 대화스타일 1)으로 전문가의 판단 체계를 아카이빙합니다. action='start'로 시작, action='answer'로 답변을 제출합니다.",
+        parameters: {
+          persona_id: "페르소나 UUID",
+          action: "'start' 또는 'answer'",
+          session_id: "인터뷰 세션 ID (answer 시 필수)",
+          answer: "사용자의 답변 (answer 시 필수)",
+        },
+      },
+      {
+        name: "upload_audio",
+        description:
+          "음성 파일을 업로드하여 페르소나의 지식을 아카이빙합니다. 음성→텍스트 변환(STT)→임베딩→RAG 검색 가능. 지원 형식: mp3, wav, m4a, ogg, webm.",
+        parameters: {
+          persona_id: "페르소나 UUID",
+          file_path: "음성 파일의 로컬 절대 경로",
+        },
       },
       {
         name: "chat",
         description: "페르소나와 대화합니다.",
         parameters: {
-          persona_id:
-            "페르소나 UUID (persona_list로 확인 가능)",
+          persona_id: "페르소나 UUID (persona_list로 확인 가능)",
           message: "페르소나에게 보낼 메시지",
         },
       },
     ],
+    workflow: {
+      description:
+        "페르소나가 없을 때 권장 워크플로우",
+      steps: [
+        "1. persona_create로 페르소나 생성 (이름, 전문분야, 설명)",
+        "2. interview로 9개 질문 인터뷰 진행 → 판단 체계 구조화",
+        "3. upload_audio로 음성 파일 업로드 → 추가 지식 임베딩 (선택)",
+        "4. chat으로 완성된 페르소나와 대화",
+      ],
+      note: "인터뷰와 음성 업로드는 선택사항이지만 진행할수록 페르소나 답변 품질이 높아집니다.",
+    },
     api: {
       base_url: "https://human-archive-ai.vercel.app",
       authentication: "x-api-key 헤더에 API 키를 전달",
@@ -82,16 +123,36 @@ export async function GET() {
         {
           method: "GET",
           path: "/api/external/personas",
-          description: "API 키로 접근 가능한 페르소나 목록 조회",
+          description: "페르소나 목록 조회",
+        },
+        {
+          method: "POST",
+          path: "/api/external/personas/create",
+          description: "페르소나 생성",
+          body: { name: "string (필수)", domain: "string", description: "string", style: "string" },
+        },
+        {
+          method: "POST",
+          path: "/api/external/interview",
+          description: "인터뷰 진행 (start/answer)",
+          body: {
+            persona_id: "string (UUID)",
+            action: "'start' | 'answer'",
+            session_id: "string (answer 시)",
+            answer: "string (answer 시)",
+          },
+        },
+        {
+          method: "POST",
+          path: "/api/external/upload",
+          description: "음성 파일 업로드 및 처리 (FormData)",
+          body: { file: "File", persona_id: "string (UUID)" },
         },
         {
           method: "POST",
           path: "/api/external/chat",
           description: "페르소나와 대화",
-          body: {
-            persona_id: "string (UUID)",
-            message: "string",
-          },
+          body: { persona_id: "string (UUID)", message: "string" },
         },
       ],
     },

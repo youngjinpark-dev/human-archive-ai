@@ -81,11 +81,26 @@ export default function Home() {
         <h3>사용 가능한 MCP 도구</h3>
         <ul>
           <li>persona_list — API 키에 연결된 페르소나 목록 조회 (파라미터 없음)</li>
+          <li>persona_create — 새 페르소나 생성 (name: 필수, domain/description/style: 선택)</li>
+          <li>interview — 인터뷰로 페르소나 구축. 9개 질문으로 전문가의 판단 체계를 구조화 (persona_id, action: start/answer, session_id, answer)</li>
+          <li>upload_audio — 음성 파일 업로드로 지식 임베딩 (persona_id, file_path: 로컬 파일 경로)</li>
           <li>chat — 페르소나와 대화 (persona_id: UUID, message: string)</li>
         </ul>
+        <h3>페르소나가 없을 때</h3>
+        <p>
+          페르소나가 없으면 대화할 수 없습니다. 아래 순서로 안내하세요:
+          1. persona_create로 페르소나를 생성합니다.
+          2. interview로 9개 질문 인터뷰를 진행하여 전문가의 판단 체계를 구조화합니다.
+          3. upload_audio로 음성 파일을 업로드하여 추가 지식을 임베딩합니다.
+          4. chat으로 완성된 페르소나와 대화합니다.
+          인터뷰와 음성 업로드는 선택사항이지만, 진행할수록 페르소나의 답변 품질이 높아집니다.
+        </p>
         <h3>REST API (MCP 없이 직접 호출)</h3>
         <ul>
           <li>GET /api/external/personas — 페르소나 목록 (헤더: x-api-key)</li>
+          <li>POST /api/external/personas/create — 페르소나 생성 (헤더: x-api-key, 바디: name, domain, description, style)</li>
+          <li>POST /api/external/interview — 인터뷰 진행 (헤더: x-api-key, 바디: persona_id, action, session_id, answer)</li>
+          <li>POST /api/external/upload — 음성 파일 업로드 (헤더: x-api-key, FormData: file, persona_id)</li>
           <li>POST /api/external/chat — 대화 (헤더: x-api-key, 바디: persona_id, message)</li>
         </ul>
       </div>
