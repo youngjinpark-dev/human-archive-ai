@@ -1,14 +1,11 @@
 import { createServiceClient } from "@/lib/supabase/server";
 import { hashApiKey } from "@/lib/api-key";
-import { chunkText } from "@/lib/chunker";
-import { embedTexts } from "@/lib/embedding";
-import { transcribeAudio } from "@/lib/llm";
 import { NextResponse } from "next/server";
+import { randomUUID } from "crypto";
 
-export const maxDuration = 120;
+export const maxDuration = 30;
 
-// POST /api/external/upload — API 키로 음성 파일 업로드 및 처리
-// FormData: file (음성 파일), persona_id (UUID)
+// POST /api/external/upload — 음성 파일 업로드 (Storage 저장만, 처리는 별도)
 export async function POST(request: Request) {
   const apiKey = request.headers.get("x-api-key");
   if (!apiKey) {
@@ -33,6 +30,7 @@ export async function POST(request: Request) {
   const formData = await request.formData();
   const file = formData.get("file") as File | null;
   const personaId = formData.get("persona_id") as string | null;
+  const originalName = formData.get("original_name") as string | null;
 
   if (!file || !personaId) {
     return NextResponse.json(
@@ -53,23 +51,32 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Persona not found" }, { status: 404 });
   }
 
+  // 파일명 sanitize — UUID + 확장자만 사용 (특수문자 문제 방지)
+  const ext = (file.name || "audio.mp3").split(".").pop() || "mp3";
+  const safeFileName = `${randomUUID()}.${ext}`;
+  const filePath = `${keyRecord.user_id}/${personaId}/${safeFileName}`;
+  const displayName = originalName || file.name || safeFileName;
+
   // Storage에 업로드
-  const filePath = `${keyRecord.user_id}/${personaId}/${Date.now()}_${file.name}`;
   const { error: uploadError } = await supabase.storage
     .from("uploads")
     .upload(filePath, file);
 
   if (uploadError) {
-    return NextResponse.json({ error: uploadError.message }, { status: 500 });
+    return NextResponse.json(
+      { error: `Storage upload failed: ${uploadError.message}` },
+      { status: 500 }
+    );
   }
 
-  // DB 레코드 생성
+  // DB 레코드 생성 (status: uploaded — 아직 처리 안 됨)
   const { data: upload, error: insertError } = await supabase
     .from("file_uploads")
     .insert({
       persona_id: personaId,
-      file_name: file.name,
+      file_name: displayName,
       file_path: filePath,
+      status: "uploaded",
     })
     .select()
     .single();
@@ -78,70 +85,13 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: insertError.message }, { status: 500 });
   }
 
-  // 트랜스크립션 + 임베딩 처리
-  try {
-    await supabase
-      .from("file_uploads")
-      .update({ status: "transcribing" })
-      .eq("id", upload.id);
-
-    // Storage에서 다운로드
-    const { data: fileData, error: downloadError } = await supabase.storage
-      .from("uploads")
-      .download(filePath);
-
-    if (downloadError || !fileData) {
-      throw new Error("File download failed");
-    }
-
-    // Gemini 트랜스크립션
-    const audioBuffer = await fileData.arrayBuffer();
-    const mimeType = fileData.type || "audio/mpeg";
-    const transcript = await transcribeAudio(audioBuffer, mimeType);
-
-    await supabase
-      .from("file_uploads")
-      .update({ transcript, status: "embedding" })
-      .eq("id", upload.id);
-
-    // 청킹 + 임베딩
-    const chunks = chunkText(transcript, {
-      source: file.name,
-      type: "audio_transcript",
-    });
-
-    if (chunks.length > 0) {
-      const texts = chunks.map((c) => c.text);
-      const embeddings = await embedTexts(texts);
-
-      const rows = chunks.map((c, i) => ({
-        persona_id: personaId,
-        content: c.text,
-        embedding: JSON.stringify(embeddings[i]),
-        metadata: c.metadata,
-      }));
-
-      await supabase.from("chunks").insert(rows);
-    }
-
-    await supabase
-      .from("file_uploads")
-      .update({ status: "done" })
-      .eq("id", upload.id);
-
-    return NextResponse.json({
-      success: true,
+  return NextResponse.json(
+    {
       upload_id: upload.id,
-      transcript_length: transcript.length,
-      chunks_count: chunks.length,
-    });
-  } catch (error) {
-    await supabase
-      .from("file_uploads")
-      .update({ status: "error" })
-      .eq("id", upload.id);
-
-    const message = error instanceof Error ? error.message : "Processing failed";
-    return NextResponse.json({ error: message }, { status: 500 });
-  }
+      file_name: displayName,
+      status: "uploaded",
+      message: "파일 업로드 완료. POST /api/external/upload/{id}/process 로 처리를 시작하세요.",
+    },
+    { status: 201 }
+  );
 }

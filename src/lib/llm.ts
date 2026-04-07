@@ -160,44 +160,72 @@ export async function extract<T>(
 }
 
 // ============================================================
-// 오디오 트랜스크립션 (Gemini 네이티브 — Whisper 대체)
+// 오디오 트랜스크립션 (Gemini File API — 대용량 지원)
 // ============================================================
+const INLINE_DATA_THRESHOLD = 5 * 1024 * 1024; // 5MB 이하는 인라인
+
 export async function transcribeAudio(
   audioBuffer: ArrayBuffer,
   mimeType: string
 ): Promise<string> {
-  const base64 = Buffer.from(audioBuffer).toString("base64");
+  // 5MB 이하: 기존 인라인 방식 (빠름)
+  if (audioBuffer.byteLength <= INLINE_DATA_THRESHOLD) {
+    const base64 = Buffer.from(audioBuffer).toString("base64");
+    return withRetry(async (client) => {
+      const response = await client.models.generateContent({
+        model: MODEL,
+        contents: [
+          {
+            role: "user",
+            parts: [
+              { inlineData: { data: base64, mimeType } },
+              { text: "이 오디오를 한국어로 정확히 텍스트로 변환해 주세요. 말한 내용만 텍스트로 출력하고, 다른 설명은 추가하지 마세요." },
+            ],
+          },
+        ],
+        config: { temperature: 0.1, maxOutputTokens: 8192, thinkingConfig: THINKING_CONFIG },
+      });
+      const parts = response.candidates?.[0]?.content?.parts ?? [];
+      return parts.filter((p) => !p.thought && p.text).map((p) => p.text).join("");
+    });
+  }
 
+  // 5MB 초과: Gemini File API 업로드 후 참조
   return withRetry(async (client) => {
+    const blob = new Blob([audioBuffer], { type: mimeType });
+    const uploaded = await client.files.upload({ file: blob, config: { mimeType } });
+
+    if (!uploaded.uri) throw new Error("File upload failed: no URI returned");
+
+    // 파일 처리 대기 (ACTIVE 상태가 될 때까지)
+    let file = uploaded;
+    for (let i = 0; i < 30 && file.state === "PROCESSING"; i++) {
+      await new Promise((r) => setTimeout(r, 2000));
+      const result = await client.files.get({ name: file.name! });
+      file = result;
+    }
+    if (file.state !== "ACTIVE") {
+      throw new Error(`File not ready: state=${file.state}`);
+    }
+
     const response = await client.models.generateContent({
       model: MODEL,
       contents: [
         {
           role: "user",
           parts: [
-            {
-              inlineData: {
-                data: base64,
-                mimeType,
-              },
-            },
-            {
-              text: "이 오디오를 한국어로 정확히 텍스트로 변환해 주세요. 말한 내용만 텍스트로 출력하고, 다른 설명은 추가하지 마세요.",
-            },
+            { fileData: { fileUri: file.uri!, mimeType } },
+            { text: "이 오디오를 한국어로 정확히 텍스트로 변환해 주세요. 말한 내용만 텍스트로 출력하고, 다른 설명은 추가하지 마세요." },
           ],
         },
       ],
-      config: {
-        temperature: 0.1,
-        maxOutputTokens: 8192,
-        thinkingConfig: THINKING_CONFIG,
-      },
+      config: { temperature: 0.1, maxOutputTokens: 8192, thinkingConfig: THINKING_CONFIG },
     });
 
+    // 업로드된 파일 정리
+    try { await client.files.delete({ name: file.name! }); } catch { /* ignore */ }
+
     const parts = response.candidates?.[0]?.content?.parts ?? [];
-    return parts
-      .filter((p) => !p.thought && p.text)
-      .map((p) => p.text)
-      .join("");
+    return parts.filter((p) => !p.thought && p.text).map((p) => p.text).join("");
   });
 }

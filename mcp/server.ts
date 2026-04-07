@@ -388,32 +388,61 @@ server.tool(
       };
     }
 
-    const fileName = path.basename(file_path);
+    const originalName = path.basename(file_path);
+    const ext = path.extname(file_path) || ".mp3";
+    const safeFileName = `upload${ext}`;
     const fileBuffer = fs.readFileSync(file_path);
     const blob = new Blob([fileBuffer]);
 
+    // 1단계: 파일 업로드 (sanitized 파일명 + 원본명 별도 전달)
     const formData = new FormData();
-    formData.append("file", blob, fileName);
+    formData.append("file", blob, safeFileName);
     formData.append("persona_id", persona_id);
+    formData.append("original_name", originalName);
 
-    const res = await fetch(`${API_URL}/api/external/upload`, {
+    const uploadRes = await fetch(`${API_URL}/api/external/upload`, {
       method: "POST",
-      headers: {
-        "x-api-key": API_KEY,
-      },
+      headers: { "x-api-key": API_KEY },
       body: formData,
     });
 
-    if (!res.ok) {
-      const err = await res.json();
+    if (!uploadRes.ok) {
+      const err = await uploadRes.json().catch(() => ({ error: uploadRes.statusText }));
       return {
         content: [
-          { type: "text", text: `오류: ${err.error || res.statusText}` },
+          { type: "text", text: `업로드 오류: ${err.error || uploadRes.statusText}` },
         ],
       };
     }
 
-    const data = await res.json();
+    const uploadData = await uploadRes.json();
+    const uploadId = uploadData.upload_id;
+
+    // 2단계: 처리 시작 (STT + 임베딩)
+    const processRes = await fetch(`${API_URL}/api/external/upload/${uploadId}/process`, {
+      method: "POST",
+      headers: { "x-api-key": API_KEY },
+    });
+
+    if (!processRes.ok) {
+      const err = await processRes.json().catch(() => ({ error: processRes.statusText }));
+      return {
+        content: [
+          {
+            type: "text",
+            text: [
+              `파일 업로드 완료 (ID: ${uploadId})`,
+              `하지만 처리 중 오류 발생: ${err.error || processRes.statusText}`,
+              "",
+              `파일: ${originalName}`,
+              "나중에 다시 처리를 시도할 수 있습니다.",
+            ].join("\n"),
+          },
+        ],
+      };
+    }
+
+    const processData = await processRes.json();
     return {
       content: [
         {
@@ -421,9 +450,9 @@ server.tool(
           text: [
             "음성 파일 업로드 및 처리가 완료되었습니다!",
             "",
-            `파일: ${fileName}`,
-            `트랜스크립트 길이: ${data.transcript_length}자`,
-            `생성된 청크: ${data.chunks_count}개`,
+            `파일: ${originalName}`,
+            `트랜스크립트 길이: ${processData.transcript_length}자`,
+            `생성된 청크: ${processData.chunks_count}개`,
             "",
             "음성 내용이 페르소나의 지식으로 임베딩되었습니다.",
             "이제 chat 도구로 이 지식을 기반으로 대화할 수 있습니다.",
