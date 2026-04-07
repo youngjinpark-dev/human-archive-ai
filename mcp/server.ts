@@ -51,9 +51,28 @@ server.tool(
 
     if (!res.ok) {
       const err = await res.json();
+      const errorMsg = err.error || res.statusText;
+
+      if (res.status === 404) {
+        return {
+          content: [
+            {
+              type: "text",
+              text: [
+                `오류: ${errorMsg}`,
+                "",
+                "페르소나를 찾을 수 없습니다. persona_list로 사용 가능한 페르소나를 확인하세요.",
+                "페르소나가 없다면 먼저 생성해야 합니다.",
+                `페르소나 생성: ${API_URL}/personas/new`,
+              ].join("\n"),
+            },
+          ],
+        };
+      }
+
       return {
         content: [
-          { type: "text", text: `오류: ${err.error || res.statusText}` },
+          { type: "text", text: `오류: ${errorMsg}` },
         ],
       };
     }
@@ -95,7 +114,19 @@ server.tool(
     if (!personas || personas.length === 0) {
       return {
         content: [
-          { type: "text", text: "사용 가능한 페르소나가 없습니다." },
+          {
+            type: "text",
+            text: [
+              "사용 가능한 페르소나가 없습니다.",
+              "",
+              "페르소나를 먼저 생성해야 대화할 수 있습니다.",
+              `${API_URL} 에 로그인 후 좌측 메뉴의 '페르소나' → '새 페르소나 만들기'에서 생성하세요.`,
+              `직접 링크: ${API_URL}/personas/new`,
+              "",
+              "페르소나 생성 시 이름, 전문 분야, 설명을 입력합니다.",
+              "생성 후 다시 persona_list를 호출하면 목록에 표시됩니다.",
+            ].join("\n"),
+          },
         ],
       };
     }

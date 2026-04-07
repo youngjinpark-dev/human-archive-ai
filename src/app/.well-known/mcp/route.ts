@@ -12,12 +12,24 @@ export async function GET() {
       steps: [
         {
           step: 1,
-          title: "API 키 발급",
+          title: "회원가입 및 로그인",
           description:
-            "사용자에게 API 키가 있는지 확인하세요. 없다면 https://human-archive-ai.vercel.app 에 로그인 후 좌측 메뉴의 'API 키 관리'에서 발급받도록 안내하세요. API 키는 생성 시 한 번만 표시되며 ha_ 로 시작합니다.",
+            "사용자가 계정이 없다면 https://human-archive-ai.vercel.app/signup 에서 회원가입 후 https://human-archive-ai.vercel.app/login 에서 로그인하도록 안내하세요.",
         },
         {
           step: 2,
+          title: "페르소나 생성",
+          description:
+            "페르소나가 없으면 MCP로 대화할 수 없습니다. https://human-archive-ai.vercel.app/personas/new 에서 페르소나를 생성하세요. 이름, 전문 분야, 설명을 입력하여 전문가의 판단 체계를 담는 AI 인격을 만듭니다.",
+        },
+        {
+          step: 3,
+          title: "API 키 발급",
+          description:
+            "사용자에게 API 키가 있는지 확인하세요. 없다면 https://human-archive-ai.vercel.app/api-keys 에서 발급받도록 안내하세요. API 키는 생성 시 한 번만 표시되며 ha_ 로 시작합니다.",
+        },
+        {
+          step: 4,
           title: "MCP 설정 파일 생성",
           description:
             "프로젝트 루트에 .mcp.json 파일을 생성하세요. Claude Desktop의 경우 ~/Library/Application Support/Claude/claude_desktop_config.json (Mac) 또는 %APPDATA%\\Claude\\claude_desktop_config.json (Windows)에 설정합니다.",
@@ -40,7 +52,7 @@ export async function GET() {
           },
         },
         {
-          step: 3,
+          step: 5,
           title: "연결 확인",
           description:
             "설정 완료 후 Claude Code에서 /mcp 명령으로 MCP 서버를 재연결하세요. persona_list 도구로 페르소나 목록이 정상 조회되면 설정 완료입니다.",
