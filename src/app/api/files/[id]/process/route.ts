@@ -34,30 +34,37 @@ export async function POST(
   const serviceClient = createServiceClient();
 
   try {
-    // 1. 상태 업데이트: transcribing
-    await serviceClient
-      .from("file_uploads")
-      .update({ status: "transcribing" })
-      .eq("id", id);
+    // 1. 트랜스크립션 (기존 트랜스크립트가 충분하면 재사용)
+    let transcript = upload.transcript as string | null;
 
-    // 2. Storage에서 파일 다운로드
-    const { data: fileData, error: downloadError } = await serviceClient.storage
-      .from("uploads")
-      .download(upload.file_path);
+    if (!transcript || transcript.length < 100) {
+      await serviceClient
+        .from("file_uploads")
+        .update({ status: "transcribing" })
+        .eq("id", id);
 
-    if (downloadError || !fileData) {
-      throw new Error(`File download failed: ${downloadError?.message ?? "no data"}`);
+      const { data: fileData, error: downloadError } = await serviceClient.storage
+        .from("uploads")
+        .download(upload.file_path);
+
+      if (downloadError || !fileData) {
+        throw new Error(`File download failed: ${downloadError?.message ?? "no data"}`);
+      }
+
+      const audioBuffer = await fileData.arrayBuffer();
+      const mimeType = fileData.type || "audio/mpeg";
+      transcript = await transcribeAudio(audioBuffer, mimeType);
+
+      await serviceClient
+        .from("file_uploads")
+        .update({ transcript, status: "embedding" })
+        .eq("id", id);
+    } else {
+      await serviceClient
+        .from("file_uploads")
+        .update({ status: "embedding" })
+        .eq("id", id);
     }
-
-    // 3. Gemini 트랜스크립션 (5MB 초과 시 File API 자동 사용)
-    const audioBuffer = await fileData.arrayBuffer();
-    const mimeType = fileData.type || "audio/mpeg";
-    const transcript = await transcribeAudio(audioBuffer, mimeType);
-
-    await serviceClient
-      .from("file_uploads")
-      .update({ transcript, status: "embedding" })
-      .eq("id", id);
 
     // 4. 기존 청크 삭제 (재처리 시 중복 방지)
     await serviceClient

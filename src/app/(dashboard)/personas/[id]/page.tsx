@@ -5,9 +5,24 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
+interface FrameworkAxis {
+  name: string;
+  description: string;
+  weight: number;
+}
+
+interface FrameworkPattern {
+  condition: string;
+  action: string;
+  reasoning?: string;
+}
+
 interface KnowledgeStats {
   chunks: number;
   files: FileUpload[];
+  axes: FrameworkAxis[];
+  patterns: FrameworkPattern[];
+  frameworkStatus: string | null;
 }
 
 export default function PersonaDetailPage() {
@@ -27,15 +42,34 @@ export default function PersonaDetailPage() {
       .catch(() => router.push("/personas"))
       .finally(() => setLoading(false));
 
-    // 지식 현황 로드
+    // 지식 현황 + 프레임워크 로드
     (async () => {
       const { createClient } = await import("@/lib/supabase/client");
       const supabase = createClient();
-      const [{ count }, { data: files }] = await Promise.all([
+      const [{ count }, { data: files }, { data: framework }] = await Promise.all([
         supabase.from("chunks").select("*", { count: "exact", head: true }).eq("persona_id", id),
         supabase.from("file_uploads").select("*").eq("persona_id", id).order("created_at", { ascending: false }),
+        supabase.from("judgment_frameworks").select("id, status").eq("persona_id", id).single(),
       ]);
-      setKnowledge({ chunks: count ?? 0, files: files ?? [] });
+
+      let axes: FrameworkAxis[] = [];
+      let patterns: FrameworkPattern[] = [];
+      if (framework) {
+        const [{ data: axesData }, { data: patternsData }] = await Promise.all([
+          supabase.from("judgment_axes").select("name, description, weight").eq("framework_id", framework.id).order("weight", { ascending: false }),
+          supabase.from("if_then_patterns").select("condition, action, reasoning").eq("framework_id", framework.id),
+        ]);
+        axes = axesData ?? [];
+        patterns = patternsData ?? [];
+      }
+
+      setKnowledge({
+        chunks: count ?? 0,
+        files: files ?? [],
+        axes,
+        patterns,
+        frameworkStatus: framework?.status ?? null,
+      });
     })();
   }, [id, router]);
 
@@ -147,7 +181,42 @@ export default function PersonaDetailPage() {
         </div>
       )}
 
-      {/* 페르소나 상세 */}
+      {/* 판단 프레임워크 (음성/인터뷰에서 추출) */}
+      {knowledge && knowledge.axes.length > 0 && (
+        <div className="mb-8 space-y-6">
+          <section>
+            <h2 className="font-semibold text-lg mb-3 dark:text-white">판단 축</h2>
+            <div className="space-y-3">
+              {knowledge.axes.map((a, i) => (
+                <div key={i} className="border dark:border-slate-700 rounded-lg p-4 bg-white dark:bg-slate-800">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="font-medium dark:text-white">{a.name}</span>
+                    <span className="text-xs text-blue-600 dark:text-blue-400">중요도 {a.weight}</span>
+                  </div>
+                  {a.description && <p className="text-sm text-slate-600 dark:text-slate-300">{a.description}</p>}
+                </div>
+              ))}
+            </div>
+          </section>
+
+          {knowledge.patterns.length > 0 && (
+            <section>
+              <h2 className="font-semibold text-lg mb-3 dark:text-white">판단 패턴</h2>
+              <div className="space-y-3">
+                {knowledge.patterns.map((p, i) => (
+                  <div key={i} className="border dark:border-slate-700 rounded-lg p-4 bg-white dark:bg-slate-800">
+                    <p className="font-medium text-sm dark:text-white">IF {p.condition}</p>
+                    <p className="text-sm text-slate-700 dark:text-slate-300 mt-1">→ THEN {p.action}</p>
+                    {p.reasoning && <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">근거: {p.reasoning}</p>}
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+        </div>
+      )}
+
+      {/* 페르소나 상세 (인터뷰 classic 데이터) */}
       <div className="space-y-6">
         {persona.principles && persona.principles.length > 0 && (
           <section>
