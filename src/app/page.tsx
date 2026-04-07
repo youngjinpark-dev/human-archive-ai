@@ -52,11 +52,14 @@ export default function Home() {
           https://human-archive-ai.vercel.app/api-keys 에서 API 키를 발급하세요.
           키는 ha_ 로 시작하며 생성 시 한 번만 표시됩니다. 반드시 복사하여 보관하세요.
         </p>
-        <h3>4단계: MCP 설정 파일 생성</h3>
+        <h3>4단계: MCP 연결 (Streamable HTTP — 권장)</h3>
         <p>
-          프로젝트 루트에 .mcp.json 파일을 생성하세요.
-          Claude Desktop의 경우 ~/Library/Application Support/Claude/claude_desktop_config.json (Mac)
-          또는 %APPDATA%\Claude\claude_desktop_config.json (Windows)에 설정합니다.
+          Claude Code에서 다음 명령을 실행하세요. 설치나 설정 파일이 필요 없습니다.
+        </p>
+        <pre>{`claude mcp add human-archive-ai --transport http https://human-archive-ai.vercel.app/api/mcp?api_key=<사용자의_API_키>`}</pre>
+        <h3>4단계 대안: MCP 설정 파일 (stdio)</h3>
+        <p>
+          Streamable HTTP가 안 되면 .mcp.json 파일을 생성하세요.
         </p>
         <pre>{`{
   "mcpServers": {
@@ -74,7 +77,7 @@ export default function Home() {
 }`}</pre>
         <h3>5단계: 연결 확인</h3>
         <p>
-          Claude Code에서 /mcp 명령으로 MCP 서버를 연결하세요.
+          Claude Code에서 /mcp 명령으로 MCP 서버를 확인하세요.
           persona_list 도구를 호출하여 페르소나 목록이 조회되면 설정 완료입니다.
           chat 도구로 persona_id와 message를 전달하여 페르소나와 대화할 수 있습니다.
         </p>

@@ -30,9 +30,15 @@ export async function GET() {
         },
         {
           step: 4,
-          title: "MCP 설정 파일 생성",
+          title: "MCP 연결 (Streamable HTTP — 권장)",
           description:
-            "프로젝트 루트에 .mcp.json 파일을 생성하세요. Claude Desktop의 경우 ~/Library/Application Support/Claude/claude_desktop_config.json (Mac) 또는 %APPDATA%\\Claude\\claude_desktop_config.json (Windows)에 설정합니다.",
+            "Claude Code에서 다음 명령을 실행하세요: claude mcp add human-archive-ai --transport http https://human-archive-ai.vercel.app/api/mcp?api_key=<USER_API_KEY>. 설치나 설정 파일이 필요 없습니다.",
+        },
+        {
+          step: "4-alt",
+          title: "MCP 연결 (stdio — 대안)",
+          description:
+            "Streamable HTTP가 안 되면, 프로젝트 루트에 .mcp.json 파일을 생성하세요.",
           config: {
             mcpServers: {
               "human-archive-ai": {
@@ -55,7 +61,7 @@ export async function GET() {
           step: 5,
           title: "연결 확인",
           description:
-            "설정 완료 후 Claude Code에서 /mcp 명령으로 MCP 서버를 재연결하세요. persona_list 도구로 페르소나 목록이 정상 조회되면 설정 완료입니다.",
+            "설정 완료 후 Claude Code에서 /mcp 명령으로 MCP 서버를 확인하세요. persona_list 도구로 페르소나 목록이 정상 조회되면 설정 완료입니다.",
         },
       ],
     },

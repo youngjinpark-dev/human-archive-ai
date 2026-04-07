@@ -73,9 +73,15 @@ vercel --prod
 
 ## MCP 설정
 
-Claude Code 또는 Claude Desktop에서 Human Archive AI 페르소나와 대화하려면 MCP 서버를 설정하세요.
+Claude Code 또는 Claude Desktop에서 Human Archive AI 페르소나와 대화하려면 MCP 서버를 연결하세요.
 
-### 설정 파일 (.mcp.json)
+### 방법 1: Streamable HTTP (권장 — 설치 불필요)
+
+```bash
+claude mcp add human-archive-ai --transport http https://human-archive-ai.vercel.app/api/mcp?api_key=ha_your_api_key_here
+```
+
+### 방법 2: stdio (로컬 실행)
 
 ```json
 {
