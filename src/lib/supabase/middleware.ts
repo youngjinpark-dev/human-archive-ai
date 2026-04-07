@@ -34,9 +34,10 @@ export async function updateSession(request: NextRequest) {
     request.nextUrl.pathname.startsWith("/login") ||
     request.nextUrl.pathname.startsWith("/signup");
   const isApiExternal = request.nextUrl.pathname.startsWith("/api/external");
+  const isWellKnown = request.nextUrl.pathname.startsWith("/.well-known");
   const isRootPage = request.nextUrl.pathname === "/";
 
-  if (!user && !isAuthPage && !isApiExternal && !isRootPage) {
+  if (!user && !isAuthPage && !isApiExternal && !isWellKnown && !isRootPage) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     return NextResponse.redirect(url);
