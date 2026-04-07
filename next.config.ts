@@ -1,7 +1,17 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  headers: async () => [
+    {
+      source: "/((?!api|_next).*)",
+      headers: [
+        {
+          key: "Link",
+          value: '</.well-known/mcp>; rel="mcp-discovery"; type="application/json"',
+        },
+      ],
+    },
+  ],
 };
 
 export default nextConfig;

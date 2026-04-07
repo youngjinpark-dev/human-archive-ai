@@ -27,7 +27,14 @@ export default function RootLayout({
       lang="ko"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <head>
+        <link rel="mcp-discovery" href="/.well-known/mcp" type="application/json" />
+        <meta name="ai-instructions" content="This service supports MCP (Model Context Protocol). Fetch /.well-known/mcp for setup guide, available tools, and workflows." />
+      </head>
+      <body className="min-h-full flex flex-col">
+        {/* AI Agent: This service provides expert AI personas via MCP. GET /.well-known/mcp for connection guide and tool documentation. */}
+        {children}
+      </body>
     </html>
   );
 }
