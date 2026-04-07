@@ -1,6 +1,6 @@
 import { createServiceClient } from "@/lib/supabase/server";
 import { hashApiKey } from "@/lib/api-key";
-import { chat, extract } from "@/lib/llm";
+import { chat } from "@/lib/llm";
 import { buildSystemPrompt } from "@/lib/prompt";
 import { loadFramework } from "@/lib/framework-loader";
 import { embedText } from "@/lib/embedding";
@@ -151,13 +151,12 @@ export async function POST(request: Request) {
     ? `\n추가 컨텍스트: ${JSON.stringify(userContext)}`
     : "";
 
-  // LLM으로 판단 생성
+  // LLM으로 판단 생성 (1회 호출로 완료)
   try {
-    const consultPrompt = `다음 상황에 대해 판단 프레임워크를 기반으로 구조화된 자문을 제공하세요.
+    const consultPrompt = `상황: ${situation}${contextText}${constraintsText}${storiesContext}
 
-상황: ${situation}${contextText}${constraintsText}${storiesContext}
-
-반드시 JSON으로만 응답하세요:
+이 상황에 대해 판단 프레임워크를 기반으로 자문을 제공하세요.
+가능하면 아래 JSON 형식으로 응답하되, 불가능하면 자유 형식도 괜찮습니다:
 {
   "judgment": "판단 결론",
   "reasoning": "판단 근거 (프레임워크 기반)",
@@ -168,24 +167,30 @@ export async function POST(request: Request) {
   "caveats": ["주의사항1", "주의사항2"]
 }`;
 
-    const result = await extract<ConsultResult>(consultPrompt, systemPrompt);
+    const response = await chat(systemPrompt, [
+      { role: "user", content: consultPrompt },
+    ]);
 
-    if (!result) {
-      // fallback: 비구조화 응답
-      const response = await chat(systemPrompt, [
-        { role: "user", content: `상황: ${situation}${contextText}${constraintsText}\n\n이 상황에 대해 판단 프레임워크를 기반으로 조언해주세요.` },
-      ]);
-      return NextResponse.json({
-        judgment: response,
-        reasoning: "",
-        applicable_axes: [],
-        relevant_patterns: [],
-        confidence: 0.5,
-        caveats: ["구조화된 분석에 실패하여 일반 응답으로 대체되었습니다."],
-      });
+    // JSON 파싱 시도
+    const braceStart = response.indexOf("{");
+    const braceEnd = response.lastIndexOf("}");
+    if (braceStart >= 0 && braceEnd > braceStart) {
+      try {
+        const parsed = JSON.parse(response.slice(braceStart, braceEnd + 1)) as ConsultResult;
+        return NextResponse.json(parsed);
+      } catch {
+        // JSON 파싱 실패 → 비구조화 응답으로 반환
+      }
     }
 
-    return NextResponse.json(result);
+    return NextResponse.json({
+      judgment: response,
+      reasoning: "",
+      applicable_axes: [],
+      relevant_patterns: [],
+      confidence: 0.5,
+      caveats: ["구조화된 분석에 실패하여 일반 응답으로 대체되었습니다."],
+    });
   } catch (error) {
     const msg = error instanceof Error ? error.message : "LLM error";
     return NextResponse.json(
