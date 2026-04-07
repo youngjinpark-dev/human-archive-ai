@@ -10,7 +10,7 @@ export default function DashboardLayout({
   return (
     <>
       <Nav />
-      <div className="flex-1 max-w-5xl mx-auto w-full px-4 py-8">
+      <div className="flex-1 max-w-5xl mx-auto w-full px-4 py-8 text-slate-900 dark:text-slate-100">
         {children}
       </div>
     </>
