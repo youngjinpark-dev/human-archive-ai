@@ -35,11 +35,12 @@ export async function updateSession(request: NextRequest) {
     request.nextUrl.pathname.startsWith("/signup");
   const isApiExternal = request.nextUrl.pathname.startsWith("/api/external");
   const isApiStore = request.nextUrl.pathname.startsWith("/api/store");
+  const isApiMcp = request.nextUrl.pathname.startsWith("/api/mcp");
   const isWellKnown = request.nextUrl.pathname.startsWith("/.well-known");
   const isRootPage = request.nextUrl.pathname === "/";
   const isStoreBrowsing = request.nextUrl.pathname.startsWith("/store");
 
-  if (!user && !isAuthPage && !isApiExternal && !isApiStore && !isWellKnown && !isRootPage && !isStoreBrowsing) {
+  if (!user && !isAuthPage && !isApiExternal && !isApiStore && !isApiMcp && !isWellKnown && !isRootPage && !isStoreBrowsing) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     return NextResponse.redirect(url);
