@@ -26,6 +26,7 @@ interface ListingDetail {
     has_knowledge: boolean;
     principles_count: number;
     scenarios_count: number;
+    verification_level?: string;
   } | null;
   status: string;
   personas: {
@@ -89,15 +90,32 @@ export default function StoreDetailPage() {
   const isOwner = currentUserId === listing.seller_id;
   const personaName = listing.personas?.name ?? listing.title;
   const qualityScore = listing.quality_score;
+  const isVerified = qualityScore?.verification_level === "verified";
 
   return (
     <div className="flex flex-col lg:flex-row gap-8">
       {/* Main content */}
       <div className="flex-1 min-w-0">
         <div className="mb-6">
-          <h1 className="text-2xl font-bold">{listing.title}</h1>
+          <div className="flex items-center gap-3">
+            <h1 className="text-2xl font-bold">{listing.title}</h1>
+            {isVerified ? (
+              <span className="shrink-0 text-xs bg-green-50 text-green-600 border border-green-200 px-2 py-0.5 rounded-full">
+                검증된 페르소나
+              </span>
+            ) : (
+              <span className="shrink-0 text-xs bg-gray-100 text-gray-500 border border-gray-200 px-2 py-0.5 rounded-full">
+                기본 페르소나
+              </span>
+            )}
+          </div>
           {listing.subtitle && (
             <p className="text-gray-500 mt-1">{listing.subtitle}</p>
+          )}
+          {!isVerified && (
+            <p className="mt-2 text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+              이 페르소나는 인터뷰 기반으로 생성되었으며, 실제 전문가의 음성/문서로 검증되지 않았습니다.
+            </p>
           )}
         </div>
 

@@ -16,17 +16,31 @@ export interface StoreListing {
   trial_count: number;
   purchase_count: number;
   avg_rating: number | null;
+  quality_score?: { verification_level?: string } | null;
   status: string;
   created_at: string;
 }
 
 export default function StoreCard({ listing }: { listing: StoreListing }) {
+  const isVerified = listing.quality_score?.verification_level === "verified";
+
   return (
     <Link
       href={`/store/${listing.id}`}
       className="block border rounded-lg p-5 hover:border-blue-300 hover:shadow-sm transition"
     >
-      <h3 className="font-semibold text-lg">{listing.title}</h3>
+      <div className="flex items-center gap-2">
+        <h3 className="font-semibold text-lg">{listing.title}</h3>
+        {isVerified ? (
+          <span className="shrink-0 text-xs bg-green-50 text-green-600 px-1.5 py-0.5 rounded" title="음성/문서 기반 검증된 페르소나">
+            검증됨
+          </span>
+        ) : (
+          <span className="shrink-0 text-xs bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded" title="인터뷰 기반 기본 페르소나">
+            기본
+          </span>
+        )}
+      </div>
       {listing.subtitle && (
         <p className="text-sm text-gray-500 mt-0.5">{listing.subtitle}</p>
       )}

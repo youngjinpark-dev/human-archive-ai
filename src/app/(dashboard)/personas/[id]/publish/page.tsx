@@ -49,15 +49,14 @@ export default function PublishPage() {
     interviewDone:
       (persona.principles?.length ?? 0) > 0 ||
       (persona.decision_scenarios?.length ?? 0) > 0,
-    hasKnowledge: true, // We don't have a direct way to check from the persona object; assume true if principles exist
+    hasKnowledge: true,
     principlesCount: persona.principles?.length ?? 0,
     scenariosCount: persona.decision_scenarios?.length ?? 0,
   };
 
   const qualityMet =
     quality.interviewDone &&
-    quality.principlesCount >= 1 &&
-    quality.scenariosCount >= 1;
+    quality.principlesCount >= 1;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
