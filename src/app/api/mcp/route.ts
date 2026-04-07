@@ -7,7 +7,6 @@
 
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
-import { isInitializeRequest } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 import { createServiceClient } from "@/lib/supabase/server";
 import { hashApiKey } from "@/lib/api-key";
@@ -344,12 +343,7 @@ function createMcpServer(apiKey: string) {
 }
 
 // ============================================================
-// 세션 관리 (인메모리 — Vercel Fluid Compute에서 재사용됨)
-// ============================================================
-const sessions = new Map<string, { transport: WebStandardStreamableHTTPServerTransport; server: McpServer }>();
-
-// ============================================================
-// POST /api/mcp — JSON-RPC 메시지 수신
+// POST /api/mcp — JSON-RPC 메시지 수신 (stateless 모드)
 // ============================================================
 export async function POST(request: Request) {
   // API 키를 Authorization 헤더 또는 쿼리에서 추출
@@ -357,81 +351,29 @@ export async function POST(request: Request) {
   const apiKey = authHeader?.replace("Bearer ", "") ??
     new URL(request.url).searchParams.get("api_key") ?? "";
 
-  const sessionId = request.headers.get("mcp-session-id");
-
-  // 기존 세션이 있으면 재사용
-  if (sessionId && sessions.has(sessionId)) {
-    const { transport } = sessions.get(sessionId)!;
-    return transport.handleRequest(request);
-  }
-
-  // 세션 ID가 있지만 서버에 없는 경우 (만료/인스턴스 변경)
-  // → 클라이언트에게 세션 재시작을 알림 (MCP 스펙: 404 반환)
-  if (sessionId) {
-    return new Response(
-      JSON.stringify({
-        jsonrpc: "2.0",
-        error: { code: -32000, message: "Session expired. Please reconnect." },
-        id: null,
-      }),
-      { status: 404, headers: { "Content-Type": "application/json" } }
-    );
-  }
-
-  // 새 세션은 initialize 요청일 때만 생성
-  const body = await request.json();
-  if (!isInitializeRequest(body)) {
-    return new Response(
-      JSON.stringify({
-        jsonrpc: "2.0",
-        error: { code: -32000, message: "Bad Request: expected initialize" },
-        id: null,
-      }),
-      { status: 400, headers: { "Content-Type": "application/json" } }
-    );
-  }
-
+  // Stateless: 매 요청마다 새 transport + server 생성
+  // Vercel 서버리스 환경에서 인메모리 세션은 인스턴스 간 공유 불가하므로
+  // sessionIdGenerator: undefined 로 stateless 모드 사용
   const transport = new WebStandardStreamableHTTPServerTransport({
-    sessionIdGenerator: () => crypto.randomUUID(),
-    onsessioninitialized: (newSessionId) => {
-      sessions.set(newSessionId, { transport, server });
-      // 10분 후 세션 정리
-      setTimeout(() => sessions.delete(newSessionId), 10 * 60 * 1000);
-    },
+    sessionIdGenerator: undefined,
   });
 
   const server = createMcpServer(apiKey);
   await server.connect(transport);
 
-  return transport.handleRequest(request, { parsedBody: body });
+  return transport.handleRequest(request);
 }
 
 // ============================================================
-// GET /api/mcp — SSE 스트림 연결
+// GET /api/mcp — stateless 모드에서는 SSE 스트림 미지원
 // ============================================================
-export async function GET(request: Request) {
-  const sessionId = request.headers.get("mcp-session-id");
-
-  if (sessionId && sessions.has(sessionId)) {
-    const { transport } = sessions.get(sessionId)!;
-    return transport.handleRequest(request);
-  }
-
-  return new Response("Session not found. Send POST first.", { status: 400 });
+export async function GET() {
+  return new Response("Stateless mode — SSE not supported. Use POST.", { status: 405 });
 }
 
 // ============================================================
-// DELETE /api/mcp — 세션 종료
+// DELETE /api/mcp — stateless 모드에서는 세션 종료 불필요
 // ============================================================
-export async function DELETE(request: Request) {
-  const sessionId = request.headers.get("mcp-session-id");
-
-  if (sessionId && sessions.has(sessionId)) {
-    const { transport } = sessions.get(sessionId)!;
-    const response = await transport.handleRequest(request);
-    sessions.delete(sessionId);
-    return response;
-  }
-
-  return new Response("Session not found", { status: 404 });
+export async function DELETE() {
+  return new Response(null, { status: 200 });
 }
