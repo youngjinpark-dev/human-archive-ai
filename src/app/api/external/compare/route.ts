@@ -1,8 +1,7 @@
 import { createServiceClient } from "@/lib/supabase/server";
 import { hashApiKey } from "@/lib/api-key";
-import { extract } from "@/lib/llm";
+import { chat, extract } from "@/lib/llm";
 import { buildSystemPrompt } from "@/lib/prompt";
-import { searchChunks, formatContext } from "@/lib/retriever";
 import { loadFramework } from "@/lib/framework-loader";
 import type { Persona } from "@/types";
 import { NextResponse } from "next/server";
@@ -82,7 +81,12 @@ export async function POST(request: Request) {
   }
 
   // 프레임워크 로드
-  const frameworkData = await loadFramework(persona_id);
+  let frameworkData;
+  try {
+    frameworkData = await loadFramework(persona_id);
+  } catch {
+    return NextResponse.json({ error: "Failed to load framework" }, { status: 500 });
+  }
   if (!frameworkData || frameworkData.framework.status !== "ready") {
     return NextResponse.json(
       { error: "Judgment framework not ready" },
@@ -90,15 +94,10 @@ export async function POST(request: Request) {
     );
   }
 
-  // RAG 검색
-  const searchQuery = `${approaches.join(" vs ")} ${userContext ?? ""}`;
-  const ragResults = await searchChunks(persona_id, searchQuery, 5);
-  const ragContext = formatContext(ragResults);
-
-  // 시스템 프롬프트
+  // 시스템 프롬프트 (RAG 없이 프레임워크 기반)
   const systemPrompt = buildSystemPrompt(
     persona as Persona,
-    ragContext,
+    "(관련 자료 없음)",
     frameworkData
   );
 
@@ -124,14 +123,24 @@ export async function POST(request: Request) {
   "relevant_stories": [{"title": "관련 경험", "summary": "요약"}]
 }`;
 
-  const result = await extract<CompareResult>(comparePrompt, systemPrompt);
+  try {
+    const result = await extract<CompareResult>(comparePrompt, systemPrompt);
 
-  if (!result) {
-    return NextResponse.json(
-      { error: "Analysis failed" },
-      { status: 500 }
-    );
+    if (!result) {
+      const response = await chat(systemPrompt, [
+        { role: "user", content: `접근법 비교: ${approaches.join(" vs ")}${contextText}\n\n판단 프레임워크를 기반으로 비교 분석해주세요.` },
+      ]);
+      return NextResponse.json({
+        recommended: approaches[0],
+        reasoning: response,
+        per_approach: [],
+        relevant_stories: [],
+      });
+    }
+
+    return NextResponse.json(result);
+  } catch (error) {
+    const msg = error instanceof Error ? error.message : "Analysis error";
+    return NextResponse.json({ error: `Compare failed: ${msg}` }, { status: 500 });
   }
-
-  return NextResponse.json(result);
 }
