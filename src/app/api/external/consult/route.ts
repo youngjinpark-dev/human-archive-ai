@@ -74,7 +74,15 @@ export async function POST(request: Request) {
   }
 
   // 프레임워크 로드
-  const frameworkData = await loadFramework(persona_id);
+  let frameworkData;
+  try {
+    frameworkData = await loadFramework(persona_id);
+  } catch {
+    return NextResponse.json(
+      { error: "Failed to load framework" },
+      { status: 500 }
+    );
+  }
   if (!frameworkData || frameworkData.framework.status !== "ready") {
     return NextResponse.json(
       { error: "Judgment framework not ready. Complete a deep interview first." },
@@ -134,8 +142,9 @@ export async function POST(request: Request) {
     ? `\n추가 컨텍스트: ${JSON.stringify(userContext)}`
     : "";
 
-  // LLM으로 구조화된 판단 생성
-  const consultPrompt = `다음 상황에 대해 판단 프레임워크를 기반으로 구조화된 자문을 제공하세요.
+  // LLM으로 판단 생성
+  try {
+    const consultPrompt = `다음 상황에 대해 판단 프레임워크를 기반으로 구조화된 자문을 제공하세요.
 
 상황: ${situation}${contextText}${constraintsText}${storiesContext}
 
@@ -150,22 +159,29 @@ export async function POST(request: Request) {
   "caveats": ["주의사항1", "주의사항2"]
 }`;
 
-  const result = await extract<ConsultResult>(consultPrompt, systemPrompt);
+    const result = await extract<ConsultResult>(consultPrompt, systemPrompt);
 
-  if (!result) {
-    // fallback: 비구조화 응답
-    const response = await chat(systemPrompt, [
-      { role: "user", content: `상황: ${situation}${contextText}${constraintsText}\n\n이 상황에 대해 판단 프레임워크를 기반으로 조언해주세요.` },
-    ]);
-    return NextResponse.json({
-      judgment: response,
-      reasoning: "",
-      applicable_axes: [],
-      relevant_patterns: [],
-      confidence: 0.5,
-      caveats: ["구조화된 분석에 실패하여 일반 응답으로 대체되었습니다."],
-    });
+    if (!result) {
+      // fallback: 비구조화 응답
+      const response = await chat(systemPrompt, [
+        { role: "user", content: `상황: ${situation}${contextText}${constraintsText}\n\n이 상황에 대해 판단 프레임워크를 기반으로 조언해주세요.` },
+      ]);
+      return NextResponse.json({
+        judgment: response,
+        reasoning: "",
+        applicable_axes: [],
+        relevant_patterns: [],
+        confidence: 0.5,
+        caveats: ["구조화된 분석에 실패하여 일반 응답으로 대체되었습니다."],
+      });
+    }
+
+    return NextResponse.json(result);
+  } catch (error) {
+    const msg = error instanceof Error ? error.message : "LLM error";
+    return NextResponse.json(
+      { error: `Judgment generation failed: ${msg}` },
+      { status: 500 }
+    );
   }
-
-  return NextResponse.json(result);
 }
