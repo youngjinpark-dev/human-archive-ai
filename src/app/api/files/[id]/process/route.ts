@@ -97,6 +97,8 @@ async function processUpload(id: string, upload: any) {
     // 5. 판단 패턴 추출 (framework 없으면 자동 생성)
     if (transcript.length > 50) {
       try {
+        console.log(`[process] Starting pattern extraction for ${id}, transcript length: ${transcript.length}`);
+
         let framework = await serviceClient
           .from("judgment_frameworks")
           .select("*")
@@ -105,22 +107,28 @@ async function processUpload(id: string, upload: any) {
           .then((r) => r.data);
 
         if (!framework) {
-          const { data: newFw } = await serviceClient
+          console.log(`[process] No framework found, creating one for persona ${upload.persona_id}`);
+          const { data: newFw, error: fwError } = await serviceClient
             .from("judgment_frameworks")
             .insert({ persona_id: upload.persona_id, status: "building" })
             .select()
             .single();
+          if (fwError) console.error(`[process] Framework creation failed:`, fwError);
           framework = newFw;
         }
 
         if (framework) {
+          console.log(`[process] Framework ${framework.id}, extracting patterns...`);
           const { data: existingAxes } = await serviceClient
             .from("judgment_axes")
             .select("name")
             .eq("framework_id", framework.id);
           const axesNames = (existingAxes ?? []).map((a: { name: string }) => a.name);
 
-          const extraction = await extractJudgmentPatterns(transcript, axesNames);
+          // 트랜스크립트가 너무 길면 앞부분만 사용 (extract의 maxOutputTokens 제한)
+          const textForExtraction = transcript.length > 6000 ? transcript.slice(0, 6000) : transcript;
+          const extraction = await extractJudgmentPatterns(textForExtraction, axesNames);
+          console.log(`[process] Extracted: ${extraction.newAxes.length} axes, ${extraction.newPatterns.length} patterns, ${extraction.newStories.length} stories`);
 
           for (const axis of extraction.newAxes) {
             await serviceClient.from("judgment_axes").insert({
@@ -187,7 +195,8 @@ async function processUpload(id: string, upload: any) {
               .eq("id", framework.id);
           }
         }
-      } catch {
+      } catch (extractError) {
+        console.error(`[process] Pattern extraction failed for ${id}:`, extractError);
         // 추출 실패해도 기존 파이프라인 결과는 유지
       }
     }
