@@ -1,12 +1,24 @@
 import { createClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/server";
 import { extract } from "@/lib/llm";
+import { embedText } from "@/lib/embedding";
 import {
   INTERVIEW_PHASES,
   getQuestion,
   getNextPosition,
 } from "@/lib/interview-phases";
-import type { DecisionScenario } from "@/types";
+import {
+  DEEP_SEED_QUESTIONS,
+  MAX_DEEP_QUESTIONS,
+  generateNextQuestion,
+  extractFromAnswer,
+  calculateSaturation,
+  determinePhase,
+} from "@/lib/deep-interview";
+import type { DecisionScenario, ExtractionResult } from "@/types";
 import { NextResponse } from "next/server";
+
+export const maxDuration = 60;
 
 // POST /api/interview/[personaId]/answer — 답변 처리
 export async function POST(
@@ -40,6 +52,12 @@ export async function POST(
     return NextResponse.json({ error: "Invalid or completed session" }, { status: 400 });
   }
 
+  // deep 모드 분기
+  if (session.mode === "deep") {
+    return handleDeepAnswer(supabase, personaId, session, answer);
+  }
+
+  // === classic 모드 (기존 로직 유지) ===
   const phase = INTERVIEW_PHASES[session.phase_index];
   const question = getQuestion(session.phase_index, session.question_index);
 
@@ -85,6 +103,271 @@ export async function POST(
     phase: phase.name,
     next_question: null,
   });
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function handleDeepAnswer(
+  supabase: any,
+  personaId: string,
+  session: any,
+  answer: string
+) {
+  const serviceClient = createServiceClient();
+  const answeredCount = (session.total_questions ?? session.question_index ?? 0);
+  const sessionId = session.id;
+
+  // 현재 질문 결정
+  const currentQuestion =
+    answeredCount < DEEP_SEED_QUESTIONS.length
+      ? DEEP_SEED_QUESTIONS[answeredCount]
+      : "(동적 생성 질문)";
+
+  // 프레임워크 조회/생성
+  let { data: framework } = await serviceClient
+    .from("judgment_frameworks")
+    .select("*")
+    .eq("persona_id", personaId)
+    .single();
+
+  if (!framework) {
+    const { data: newFw } = await serviceClient
+      .from("judgment_frameworks")
+      .insert({ persona_id: personaId, status: "building" })
+      .select()
+      .single();
+    framework = newFw;
+  }
+
+  if (!framework) {
+    return NextResponse.json({ error: "Framework creation failed" }, { status: 500 });
+  }
+
+  // 기존 axes 이름 조회
+  const { data: existingAxes } = await serviceClient
+    .from("judgment_axes")
+    .select("*")
+    .eq("framework_id", framework.id);
+  const axesNames = (existingAxes ?? []).map((a: { name: string }) => a.name);
+
+  // 답변에서 판단 패턴 추출
+  const extraction = await extractFromAnswer(currentQuestion, answer, axesNames);
+
+  // 추출 결과를 DB에 저장
+  await saveExtraction(serviceClient, framework.id, extraction, sessionId);
+
+  // 답변 저장
+  const phase = determinePhase(answeredCount, Number(session.saturation_score ?? 0));
+  await supabase.from("interview_answers").insert({
+    session_id: sessionId,
+    phase,
+    question: currentQuestion,
+    answer,
+    question_intent: phase === "seed" ? "explore_why" : null,
+    extracted_axes: JSON.stringify(extraction.newAxes),
+    extracted_patterns: JSON.stringify(extraction.newPatterns),
+    extracted_stories: JSON.stringify(extraction.newStories),
+  });
+
+  const newAnsweredCount = answeredCount + 1;
+
+  // 포화도 계산 - 최근 답변들의 extraction 이력 조회
+  const { data: recentAnswers } = await supabase
+    .from("interview_answers")
+    .select("extracted_axes, extracted_patterns, extracted_stories")
+    .eq("session_id", sessionId)
+    .order("created_at", { ascending: false })
+    .limit(3);
+
+  const recentExtractions: ExtractionResult[] = (recentAnswers ?? []).map(
+    (a: { extracted_axes: unknown; extracted_patterns: unknown; extracted_stories: unknown }) => ({
+      newAxes: Array.isArray(a.extracted_axes) ? a.extracted_axes : [],
+      reinforcedAxes: [],
+      newPatterns: Array.isArray(a.extracted_patterns) ? a.extracted_patterns : [],
+      newStories: Array.isArray(a.extracted_stories) ? a.extracted_stories : [],
+    })
+  );
+  const saturation = calculateSaturation(recentExtractions);
+
+  // 세션 업데이트
+  await supabase
+    .from("interview_sessions")
+    .update({
+      question_index: newAnsweredCount,
+      total_questions: newAnsweredCount,
+      saturation_score: saturation,
+    })
+    .eq("id", sessionId);
+
+  // 종료 조건 확인
+  const newPhase = determinePhase(newAnsweredCount, saturation);
+
+  if (newPhase === "confirmation" || newAnsweredCount >= MAX_DEEP_QUESTIONS) {
+    // 프레임워크 완성 → 확인 phase
+    const { data: allAxes } = await serviceClient
+      .from("judgment_axes")
+      .select("*")
+      .eq("framework_id", framework.id);
+    const { data: allPatterns } = await serviceClient
+      .from("if_then_patterns")
+      .select("*")
+      .eq("framework_id", framework.id);
+    const { data: allStories } = await serviceClient
+      .from("experience_stories")
+      .select("id, title, summary, context, decision, outcome, lesson")
+      .eq("framework_id", framework.id);
+
+    return NextResponse.json({
+      status: "confirming",
+      framework_summary: {
+        axes: allAxes ?? [],
+        patterns: allPatterns ?? [],
+        stories: allStories ?? [],
+        philosophy: framework.philosophy,
+      },
+      message: "추출된 판단 프레임워크를 확인해 주세요. 수정할 부분이 있나요?",
+      progress: {
+        answered: newAnsweredCount,
+        estimated_remaining: 0,
+        saturation,
+      },
+    });
+  }
+
+  // 다음 질문 생성
+  const { data: updatedAxes } = await serviceClient
+    .from("judgment_axes")
+    .select("*")
+    .eq("framework_id", framework.id);
+  const { data: updatedPatterns } = await serviceClient
+    .from("if_then_patterns")
+    .select("*")
+    .eq("framework_id", framework.id);
+  const { data: updatedStories } = await serviceClient
+    .from("experience_stories")
+    .select("*")
+    .eq("framework_id", framework.id);
+
+  let nextQuestion: string;
+  let nextIntent: string;
+
+  if (newAnsweredCount < DEEP_SEED_QUESTIONS.length) {
+    nextQuestion = DEEP_SEED_QUESTIONS[newAnsweredCount];
+    nextIntent = "explore_why";
+  } else {
+    const { data: allAnswers } = await supabase
+      .from("interview_answers")
+      .select("question, answer")
+      .eq("session_id", sessionId)
+      .order("created_at", { ascending: true });
+
+    const result = await generateNextQuestion({
+      answers: (allAnswers ?? []).map((a: { question: string; answer: string }) => ({
+        question: a.question,
+        answer: a.answer,
+      })),
+      axes: updatedAxes ?? [],
+      patterns: updatedPatterns ?? [],
+      stories: updatedStories ?? [],
+      saturation,
+    });
+    nextQuestion = result.question;
+    nextIntent = result.intent;
+  }
+
+  return NextResponse.json({
+    status: "in_progress",
+    phase: newPhase,
+    next_question: nextQuestion,
+    question_intent: nextIntent,
+    extracted: {
+      axes: extraction.newAxes,
+      patterns: extraction.newPatterns,
+      stories: extraction.newStories,
+    },
+    progress: {
+      answered: newAnsweredCount,
+      estimated_remaining: Math.max(0, 15 - newAnsweredCount),
+      saturation,
+    },
+  });
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function saveExtraction(
+  serviceClient: any,
+  frameworkId: string,
+  extraction: ExtractionResult,
+  sourceId: string
+) {
+  // 새 판단 축 저장
+  for (const axis of extraction.newAxes) {
+    await serviceClient.from("judgment_axes").insert({
+      framework_id: frameworkId,
+      name: axis.name,
+      description: axis.description,
+      weight: axis.weight,
+      domain: axis.domain,
+      evidence_count: 1,
+    });
+  }
+
+  // 기존 축 보강
+  for (const reinforced of extraction.reinforcedAxes) {
+    await serviceClient
+      .from("judgment_axes")
+      .update({
+        evidence_count: serviceClient.rpc ? undefined : undefined, // handled below
+      })
+      .eq("framework_id", frameworkId)
+      .eq("name", reinforced.axisName);
+
+    // evidence_count 증가
+    const { data: axis } = await serviceClient
+      .from("judgment_axes")
+      .select("evidence_count")
+      .eq("framework_id", frameworkId)
+      .eq("name", reinforced.axisName)
+      .single();
+    if (axis) {
+      await serviceClient
+        .from("judgment_axes")
+        .update({ evidence_count: (axis.evidence_count ?? 0) + 1 })
+        .eq("framework_id", frameworkId)
+        .eq("name", reinforced.axisName);
+    }
+  }
+
+  // If-Then 패턴 저장
+  for (const pattern of extraction.newPatterns) {
+    await serviceClient.from("if_then_patterns").insert({
+      framework_id: frameworkId,
+      condition: pattern.condition,
+      action: pattern.action,
+      reasoning: pattern.reasoning,
+      confidence: 0.5,
+      source_type: "interview",
+      source_id: sourceId,
+    });
+  }
+
+  // 경험 스토리 저장 (임베딩 포함)
+  for (const story of extraction.newStories) {
+    const embedding = await embedText(
+      `${story.title} ${story.summary} ${story.context}`
+    );
+    await serviceClient.from("experience_stories").insert({
+      framework_id: frameworkId,
+      title: story.title,
+      summary: story.summary,
+      context: story.context,
+      decision: story.decision,
+      outcome: story.outcome,
+      lesson: story.lesson,
+      embedding: JSON.stringify(embedding),
+      source_type: "interview",
+      source_id: sourceId,
+    });
+  }
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

@@ -54,6 +54,15 @@ export function getQuestion(
   return phase.questions[questionIndex];
 }
 
+/**
+ * Deep 모드용 초기 seed 질문.
+ * deep 모드에서는 이 질문 이후 LLM이 동적으로 질문을 생성한다.
+ */
+export const DEEP_SEED_QUESTIONS: string[] = [
+  "전문 분야가 무엇인가요? 그리고 이 분야에서 몇 년 정도 경력이 있으신가요?",
+  "이 분야에서 가장 중요하다고 생각하는 것은 무엇인가요? 왜 그렇게 생각하시나요?",
+];
+
 export function getNextPosition(
   phaseIndex: number,
   questionIndex: number

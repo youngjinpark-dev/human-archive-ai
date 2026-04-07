@@ -45,5 +45,13 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
+  // 판단 프레임워크 자동 생성 (status: building)
+  if (persona) {
+    await supabase.from("judgment_frameworks").insert({
+      persona_id: persona.id,
+      status: "building",
+    });
+  }
+
   return NextResponse.json({ persona }, { status: 201 });
 }

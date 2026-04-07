@@ -2,6 +2,7 @@ import { createServiceClient } from "@/lib/supabase/server";
 import { chat } from "@/lib/llm";
 import { buildSystemPrompt } from "@/lib/prompt";
 import { searchChunks, formatContext } from "@/lib/retriever";
+import { loadFramework } from "@/lib/framework-loader";
 import { hashApiKey } from "@/lib/api-key";
 import type { Persona } from "@/types";
 import { NextResponse } from "next/server";
@@ -64,8 +65,15 @@ export async function POST(request: Request) {
   const results = await searchChunks(persona_id, message, 5);
   const context = formatContext(results);
 
+  // 프레임워크 로드 (있으면 프레임워크 기반, 없으면 기존 방식)
+  const frameworkData = await loadFramework(persona_id);
+
   // 시스템 프롬프트
-  const systemPrompt = buildSystemPrompt(persona as Persona, context);
+  const systemPrompt = buildSystemPrompt(
+    persona as Persona,
+    context,
+    frameworkData ?? undefined
+  );
 
   // LLM 호출
   const response = await chat(systemPrompt, [

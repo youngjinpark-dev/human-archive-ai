@@ -1,8 +1,9 @@
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/server";
 import { chunkText } from "@/lib/chunker";
-import { embedTexts } from "@/lib/embedding";
+import { embedText, embedTexts } from "@/lib/embedding";
 import { transcribeAudio } from "@/lib/llm";
+import { extractJudgmentPatterns } from "@/lib/judgment-extractor";
 import { NextResponse } from "next/server";
 
 export const maxDuration = 120; // Vercel Pro: 최대 120초
@@ -81,7 +82,95 @@ export async function POST(
       await serviceClient.from("chunks").insert(rows);
     }
 
-    // 7. 완료
+    // 7. 판단 패턴 추출 (프레임워크가 있는 경우)
+    let extractedCount = 0;
+    const { data: framework } = await serviceClient
+      .from("judgment_frameworks")
+      .select("*")
+      .eq("persona_id", upload.persona_id)
+      .single();
+
+    if (framework && transcript.length > 50) {
+      try {
+        const { data: existingAxes } = await serviceClient
+          .from("judgment_axes")
+          .select("name")
+          .eq("framework_id", framework.id);
+        const axesNames = (existingAxes ?? []).map((a: { name: string }) => a.name);
+
+        const extraction = await extractJudgmentPatterns(transcript, axesNames);
+
+        // 새 축 저장
+        for (const axis of extraction.newAxes) {
+          await serviceClient.from("judgment_axes").insert({
+            framework_id: framework.id,
+            name: axis.name,
+            description: axis.description,
+            weight: axis.weight,
+            domain: axis.domain,
+            evidence_count: 1,
+          });
+        }
+
+        // 기존 축 보강
+        for (const reinforced of extraction.reinforcedAxes) {
+          const { data: axis } = await serviceClient
+            .from("judgment_axes")
+            .select("evidence_count")
+            .eq("framework_id", framework.id)
+            .eq("name", reinforced.axisName)
+            .single();
+          if (axis) {
+            await serviceClient
+              .from("judgment_axes")
+              .update({ evidence_count: (axis.evidence_count ?? 0) + 1 })
+              .eq("framework_id", framework.id)
+              .eq("name", reinforced.axisName);
+          }
+        }
+
+        // If-Then 패턴 저장
+        for (const pattern of extraction.newPatterns) {
+          await serviceClient.from("if_then_patterns").insert({
+            framework_id: framework.id,
+            condition: pattern.condition,
+            action: pattern.action,
+            reasoning: pattern.reasoning,
+            confidence: 0.5,
+            source_type: "audio",
+            source_id: id,
+          });
+        }
+
+        // 경험 스토리 저장
+        for (const story of extraction.newStories) {
+          const storyEmbedding = await embedText(
+            `${story.title} ${story.summary} ${story.context}`
+          );
+          await serviceClient.from("experience_stories").insert({
+            framework_id: framework.id,
+            title: story.title,
+            summary: story.summary,
+            context: story.context,
+            decision: story.decision,
+            outcome: story.outcome,
+            lesson: story.lesson,
+            embedding: JSON.stringify(storyEmbedding),
+            source_type: "audio",
+            source_id: id,
+          });
+        }
+
+        extractedCount =
+          extraction.newAxes.length +
+          extraction.newPatterns.length +
+          extraction.newStories.length;
+      } catch {
+        // 추출 실패해도 기존 파이프라인 결과는 유지
+      }
+    }
+
+    // 8. 완료
     await serviceClient
       .from("file_uploads")
       .update({ status: "done" })
@@ -91,6 +180,7 @@ export async function POST(
       success: true,
       chunks_count: chunks.length,
       transcript_length: transcript.length,
+      judgment_extracted: extractedCount,
     });
   } catch (error) {
     await serviceClient
