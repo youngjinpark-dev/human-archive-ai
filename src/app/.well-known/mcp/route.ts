@@ -104,17 +104,52 @@ export async function GET() {
           message: "페르소나에게 보낼 메시지",
         },
       },
+      {
+        name: "store_search",
+        description:
+          "스토어에서 전문가 페르소나를 검색합니다. 카테고리: technology, business, education, lifestyle, creative, career",
+        parameters: {
+          query: "검색어 (선택)",
+          category: "카테고리 필터 (선택)",
+        },
+      },
+      {
+        name: "store_preview",
+        description:
+          "스토어 페르소나를 시식(체험)합니다. 페르소나당 2회 무료 대화 가능. 체험 후 웹에서 구매할 수 있습니다.",
+        parameters: {
+          listing_id: "스토어 리스팅 ID (store_search 결과에서 확인)",
+          message: "페르소나에게 보낼 메시지",
+        },
+      },
+      {
+        name: "my_purchased_personas",
+        description:
+          "구매한 페르소나 목록을 조회합니다. 구매한 페르소나는 chat 도구로 무제한 대화 가능합니다.",
+      },
     ],
     workflow: {
-      description:
-        "페르소나가 없을 때 권장 워크플로우",
-      steps: [
-        "1. persona_create로 페르소나 생성 (이름, 전문분야, 설명)",
-        "2. interview로 9개 질문 인터뷰 진행 → 판단 체계 구조화",
-        "3. upload_audio로 음성 파일 업로드 → 추가 지식 임베딩 (선택)",
-        "4. chat으로 완성된 페르소나와 대화",
-      ],
-      note: "인터뷰와 음성 업로드는 선택사항이지만 진행할수록 페르소나 답변 품질이 높아집니다.",
+      create_persona: {
+        description: "페르소나가 없을 때 권장 워크플로우",
+        steps: [
+          "1. persona_create로 페르소나 생성 (이름, 전문분야, 설명)",
+          "2. interview로 9개 질문 인터뷰 진행 → 판단 체계 구조화",
+          "3. upload_audio로 음성 파일 업로드 → 추가 지식 임베딩 (선택)",
+          "4. chat으로 완성된 페르소나와 대화",
+        ],
+        note: "인터뷰와 음성 업로드는 선택사항이지만 진행할수록 페르소나 답변 품질이 높아집니다.",
+      },
+      store: {
+        description: "스토어에서 전문가 페르소나를 검색하고 구매하는 워크플로우",
+        steps: [
+          "1. store_search로 원하는 분야의 전문가 페르소나 검색",
+          "2. store_preview로 2회 무료 시식(체험) — 페르소나 품질 확인",
+          "3. 웹(https://human-archive-ai.vercel.app/store)에서 결제하여 구매",
+          "4. my_purchased_personas로 구매 확인",
+          "5. chat 도구로 구매한 페르소나와 무제한 대화",
+        ],
+        note: "시식은 페르소나당 2회, 하루 3개 페르소나까지 가능합니다. 구매는 웹에서만 가능합니다.",
+      },
     },
     api: {
       base_url: "https://human-archive-ai.vercel.app",
@@ -153,6 +188,23 @@ export async function GET() {
           path: "/api/external/chat",
           description: "페르소나와 대화",
           body: { persona_id: "string (UUID)", message: "string" },
+        },
+        {
+          method: "GET",
+          path: "/api/external/store",
+          description: "스토어 페르소나 검색",
+          query: { q: "검색어", category: "카테고리", sort: "newest|popular|rating", page: "페이지", limit: "개수" },
+        },
+        {
+          method: "POST",
+          path: "/api/external/store/[id]/trial",
+          description: "스토어 페르소나 시식 (2회 무료)",
+          body: { message: "string" },
+        },
+        {
+          method: "GET",
+          path: "/api/external/purchases",
+          description: "구매한 페르소나 목록 조회",
         },
       ],
     },

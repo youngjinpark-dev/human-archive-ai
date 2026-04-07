@@ -28,6 +28,24 @@ export default function Nav() {
             페르소나
           </Link>
           <Link
+            href="/store"
+            className="text-sm text-gray-600 hover:text-gray-900"
+          >
+            스토어
+          </Link>
+          <Link
+            href="/purchases"
+            className="text-sm text-gray-600 hover:text-gray-900"
+          >
+            구매내역
+          </Link>
+          <Link
+            href="/seller"
+            className="text-sm text-gray-600 hover:text-gray-900"
+          >
+            판매 대시보드
+          </Link>
+          <Link
             href="/api-keys"
             className="text-sm text-gray-600 hover:text-gray-900"
           >

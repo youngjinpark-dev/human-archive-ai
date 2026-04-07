@@ -1,7 +1,8 @@
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { streamChat } from "@/lib/llm";
 import { buildSystemPrompt } from "@/lib/prompt";
 import { searchChunks, formatContext } from "@/lib/retriever";
+import { loadFramework } from "@/lib/framework-loader";
 import type { Persona } from "@/types";
 import { NextResponse } from "next/server";
 
@@ -26,14 +27,31 @@ export async function POST(
     return NextResponse.json({ error: "message required" }, { status: 400 });
   }
 
-  // 페르소나 조회
-  const { data: persona } = await supabase
+  // 페르소나 조회 (소유자 또는 구매자)
+  const serviceClient = createServiceClient();
+  const { data: persona } = await serviceClient
     .from("personas")
     .select("*")
     .eq("id", id)
-    .eq("user_id", user.id)
     .single();
   if (!persona) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+  const isOwner = persona.user_id === user.id;
+
+  if (!isOwner) {
+    // 구매 확인
+    const { data: purchase } = await serviceClient
+      .from("purchases")
+      .select("id")
+      .eq("buyer_id", user.id)
+      .eq("persona_id", id)
+      .eq("status", "confirmed")
+      .single();
+
+    if (!purchase) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+  }
 
   // 채팅 세션 관리
   let chatSessionId = session_id;
@@ -57,8 +75,11 @@ export async function POST(
   const results = await searchChunks(id, message, 5);
   const context = formatContext(results);
 
+  // 프레임워크 로드 (있으면 프레임워크 기반, 없으면 기존 방식)
+  const frameworkData = await loadFramework(id);
+
   // 시스템 프롬프트 생성
-  const systemPrompt = buildSystemPrompt(persona as Persona, context);
+  const systemPrompt = buildSystemPrompt(persona as Persona, context, frameworkData ?? undefined);
 
   // 최근 대화 히스토리 조회 (최근 10개)
   const { data: history } = await supabase
