@@ -56,33 +56,59 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Framework not found" }, { status: 404 });
   }
 
-  // 임베딩 + 유사도 검색
-  const queryEmbedding = await embedText(query);
-  const { data: stories } = await supabase.rpc("match_stories", {
-    query_embedding: queryEmbedding,
-    target_framework_id: framework.id,
-    match_count: 5,
-  });
+  // 임베딩 유사도 검색 시도
+  let stories: {
+    title: string;
+    summary: string;
+    context: string;
+    decision: string;
+    outcome: string | null;
+    lesson: string | null;
+    similarity?: number;
+  }[] = [];
+
+  try {
+    const queryEmbedding = await embedText(query);
+    const { data } = await supabase.rpc("match_stories", {
+      query_embedding: queryEmbedding,
+      target_framework_id: framework.id,
+      match_count: 5,
+    });
+    stories = data ?? [];
+  } catch {
+    // 임베딩 실패 시 무시
+  }
+
+  // 벡터 검색 결과 없으면 텍스트 기반 fallback
+  if (stories.length === 0) {
+    const { data: textResults } = await supabase
+      .from("experience_stories")
+      .select("title, summary, context, decision, outcome, lesson")
+      .eq("framework_id", framework.id)
+      .or(`title.ilike.%${query}%,summary.ilike.%${query}%,context.ilike.%${query}%,lesson.ilike.%${query}%`)
+      .limit(5);
+    stories = textResults ?? [];
+  }
+
+  // 그래도 없으면 전체 스토리 반환 (최대 5개)
+  if (stories.length === 0) {
+    const { data: allStories } = await supabase
+      .from("experience_stories")
+      .select("title, summary, context, decision, outcome, lesson")
+      .eq("framework_id", framework.id)
+      .limit(5);
+    stories = allStories ?? [];
+  }
 
   return NextResponse.json({
-    stories: (stories ?? []).map(
-      (s: {
-        title: string;
-        summary: string;
-        context: string;
-        decision: string;
-        outcome: string | null;
-        lesson: string | null;
-        similarity: number;
-      }) => ({
-        title: s.title,
-        summary: s.summary,
-        context: s.context,
-        decision: s.decision,
-        outcome: s.outcome,
-        lesson: s.lesson,
-        relevance: s.similarity,
-      })
-    ),
+    stories: stories.map((s) => ({
+      title: s.title,
+      summary: s.summary,
+      context: s.context,
+      decision: s.decision,
+      outcome: s.outcome,
+      lesson: s.lesson,
+      relevance: s.similarity ?? null,
+    })),
   });
 }
