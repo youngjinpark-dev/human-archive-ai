@@ -2,15 +2,13 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 
 const mockEmbedContent = vi.fn();
 
-vi.mock("@google/genai", () => {
-  return {
-    GoogleGenAI: class {
-      models = {
-        embedContent: mockEmbedContent,
-      };
+vi.mock("@/lib/gemini-pool", () => ({
+  getGeminiClient: () => ({
+    models: {
+      embedContent: mockEmbedContent,
     },
-  };
-});
+  }),
+}));
 
 const { embedText, embedTexts, EMBEDDING_DIMENSIONS } = await import(
   "@/lib/embedding"

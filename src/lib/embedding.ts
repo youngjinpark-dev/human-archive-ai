@@ -5,14 +5,13 @@
  * 단, 차원이 변경되면 DB 스키마 + 기존 데이터 재임베딩 필요
  */
 
-import { GoogleGenAI } from "@google/genai";
-
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! });
+import { getGeminiClient } from "@/lib/gemini-pool";
 
 const EMBEDDING_MODEL = "gemini-embedding-001";
 const EMBEDDING_DIMENSIONS = 768;
 
 export async function embedText(text: string): Promise<number[]> {
+  const ai = getGeminiClient();
   const response = await ai.models.embedContent({
     model: EMBEDDING_MODEL,
     contents: text,

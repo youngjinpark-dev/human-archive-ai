@@ -7,14 +7,12 @@
  * 지원 예정: Claude, GPT-4o, Gemini Pro 등
  */
 
-import { GoogleGenAI } from "@google/genai";
+import { getGeminiClient } from "@/lib/gemini-pool";
 
 // ============================================================
 // 설정 — 모델 교체 시 여기만 변경
 // ============================================================
 const MODEL = "gemini-3-flash-preview";
-
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! });
 
 // Gemini 3 Flash는 thinking 모델 — thinking을 유지하되
 // 출력에서는 thought 파트를 필터링하여 최종 답변만 전달
@@ -33,7 +31,7 @@ export async function chat(
     parts: [{ text: m.content }],
   }));
 
-  const response = await ai.models.generateContent({
+  const response = await getGeminiClient().models.generateContent({
     model: MODEL,
     contents,
     config: {
@@ -70,7 +68,7 @@ export async function* streamChat(
     parts: [{ text: m.content }],
   }));
 
-  const stream = await ai.models.generateContentStream({
+  const stream = await getGeminiClient().models.generateContentStream({
     model: MODEL,
     contents,
     config: {
@@ -113,7 +111,7 @@ export async function extract<T>(
   instruction: string
 ): Promise<T | null> {
   try {
-    const response = await ai.models.generateContent({
+    const response = await getGeminiClient().models.generateContent({
       model: MODEL,
       contents: [{ role: "user", parts: [{ text }] }],
       config: {
@@ -164,7 +162,7 @@ export async function transcribeAudio(
 ): Promise<string> {
   const base64 = Buffer.from(audioBuffer).toString("base64");
 
-  const response = await ai.models.generateContent({
+  const response = await getGeminiClient().models.generateContent({
     model: MODEL,
     contents: [
       {

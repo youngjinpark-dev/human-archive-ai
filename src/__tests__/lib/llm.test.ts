@@ -4,16 +4,14 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 const mockGenerateContent = vi.fn();
 const mockGenerateContentStream = vi.fn();
 
-vi.mock("@google/genai", () => {
-  return {
-    GoogleGenAI: class {
-      models = {
-        generateContent: mockGenerateContent,
-        generateContentStream: mockGenerateContentStream,
-      };
+vi.mock("@/lib/gemini-pool", () => ({
+  getGeminiClient: () => ({
+    models: {
+      generateContent: mockGenerateContent,
+      generateContentStream: mockGenerateContentStream,
     },
-  };
-});
+  }),
+}));
 
 // Import after mocking
 const { chat, streamChat, extract, transcribeAudio } = await import("@/lib/llm");
