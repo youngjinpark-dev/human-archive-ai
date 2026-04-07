@@ -5,10 +5,11 @@ import { embedText, embedTexts } from "@/lib/embedding";
 import { transcribeAudio } from "@/lib/llm";
 import { extractJudgmentPatterns } from "@/lib/judgment-extractor";
 import { NextResponse } from "next/server";
+import { after } from "next/server";
 
-export const maxDuration = 120; // Vercel Pro: 최대 120초
+export const maxDuration = 300;
 
-// POST /api/files/[id]/process — STT(Gemini) + 임베딩(OpenAI)
+// POST /api/files/[id]/process — STT + 임베딩 (백그라운드 처리)
 export async function POST(
   _request: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -31,6 +32,20 @@ export async function POST(
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
+  // 즉시 응답 반환 — 처리는 after()로 백그라운드에서 계속
+  after(async () => {
+    await processUpload(id, upload);
+  });
+
+  return NextResponse.json({
+    upload_id: id,
+    status: "processing",
+    message: "처리가 시작되었습니다. 페이지를 나가도 백그라운드에서 계속됩니다.",
+  });
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function processUpload(id: string, upload: any) {
   const serviceClient = createServiceClient();
 
   try {
@@ -41,38 +56,35 @@ export async function POST(
       .eq("id", id);
 
     // 2. Storage에서 파일 다운로드
-    const { data: fileData, error: downloadError } = await supabase.storage
+    const { data: fileData, error: downloadError } = await serviceClient.storage
       .from("uploads")
       .download(upload.file_path);
 
     if (downloadError || !fileData) {
-      throw new Error("File download failed");
+      throw new Error(`File download failed: ${downloadError?.message ?? "no data"}`);
     }
 
-    // 3. Gemini 네이티브 오디오 트랜스크립션 (Whisper 대체, 무료)
+    // 3. Gemini 트랜스크립션 (5MB 초과 시 File API 자동 사용)
     const audioBuffer = await fileData.arrayBuffer();
     const mimeType = fileData.type || "audio/mpeg";
     const transcript = await transcribeAudio(audioBuffer, mimeType);
 
-    // transcript 저장
     await serviceClient
       .from("file_uploads")
       .update({ transcript, status: "embedding" })
       .eq("id", id);
 
-    // 4. 청킹
+    // 4. 청킹 + 임베딩
     const chunks = chunkText(transcript, {
       source: upload.file_name,
       type: "audio_transcript",
     });
 
     if (chunks.length > 0) {
-      // 5. 배치 임베딩 (OpenAI — 저비용, 안정적)
-      const texts = chunks.map((c) => c.text);
+      const texts = chunks.map((c: { text: string }) => c.text);
       const embeddings = await embedTexts(texts);
 
-      // 6. pgvector에 저장
-      const rows = chunks.map((c, i) => ({
+      const rows = chunks.map((c: { text: string; metadata: Record<string, unknown> }, i: number) => ({
         persona_id: upload.persona_id,
         content: c.text,
         embedding: JSON.stringify(embeddings[i]),
@@ -82,113 +94,114 @@ export async function POST(
       await serviceClient.from("chunks").insert(rows);
     }
 
-    // 7. 판단 패턴 추출 (프레임워크가 있는 경우)
-    let extractedCount = 0;
-    const { data: framework } = await serviceClient
-      .from("judgment_frameworks")
-      .select("*")
-      .eq("persona_id", upload.persona_id)
-      .single();
-
-    if (framework && transcript.length > 50) {
+    // 5. 판단 패턴 추출 (framework 없으면 자동 생성)
+    if (transcript.length > 50) {
       try {
-        const { data: existingAxes } = await serviceClient
-          .from("judgment_axes")
-          .select("name")
-          .eq("framework_id", framework.id);
-        const axesNames = (existingAxes ?? []).map((a: { name: string }) => a.name);
+        let framework = await serviceClient
+          .from("judgment_frameworks")
+          .select("*")
+          .eq("persona_id", upload.persona_id)
+          .single()
+          .then((r) => r.data);
 
-        const extraction = await extractJudgmentPatterns(transcript, axesNames);
-
-        // 새 축 저장
-        for (const axis of extraction.newAxes) {
-          await serviceClient.from("judgment_axes").insert({
-            framework_id: framework.id,
-            name: axis.name,
-            description: axis.description,
-            weight: axis.weight,
-            domain: axis.domain,
-            evidence_count: 1,
-          });
+        if (!framework) {
+          const { data: newFw } = await serviceClient
+            .from("judgment_frameworks")
+            .insert({ persona_id: upload.persona_id, status: "building" })
+            .select()
+            .single();
+          framework = newFw;
         }
 
-        // 기존 축 보강
-        for (const reinforced of extraction.reinforcedAxes) {
-          const { data: axis } = await serviceClient
+        if (framework) {
+          const { data: existingAxes } = await serviceClient
             .from("judgment_axes")
-            .select("evidence_count")
-            .eq("framework_id", framework.id)
-            .eq("name", reinforced.axisName)
-            .single();
-          if (axis) {
-            await serviceClient
+            .select("name")
+            .eq("framework_id", framework.id);
+          const axesNames = (existingAxes ?? []).map((a: { name: string }) => a.name);
+
+          const extraction = await extractJudgmentPatterns(transcript, axesNames);
+
+          for (const axis of extraction.newAxes) {
+            await serviceClient.from("judgment_axes").insert({
+              framework_id: framework.id,
+              name: axis.name,
+              description: axis.description,
+              weight: axis.weight,
+              domain: axis.domain,
+              evidence_count: 1,
+            });
+          }
+
+          for (const reinforced of extraction.reinforcedAxes) {
+            const { data: axis } = await serviceClient
               .from("judgment_axes")
-              .update({ evidence_count: (axis.evidence_count ?? 0) + 1 })
+              .select("evidence_count")
               .eq("framework_id", framework.id)
-              .eq("name", reinforced.axisName);
+              .eq("name", reinforced.axisName)
+              .single();
+            if (axis) {
+              await serviceClient
+                .from("judgment_axes")
+                .update({ evidence_count: (axis.evidence_count ?? 0) + 1 })
+                .eq("framework_id", framework.id)
+                .eq("name", reinforced.axisName);
+            }
+          }
+
+          for (const pattern of extraction.newPatterns) {
+            await serviceClient.from("if_then_patterns").insert({
+              framework_id: framework.id,
+              condition: pattern.condition,
+              action: pattern.action,
+              reasoning: pattern.reasoning,
+              confidence: 0.5,
+              source_type: "audio",
+              source_id: id,
+            });
+          }
+
+          for (const story of extraction.newStories) {
+            const storyEmbedding = await embedText(
+              `${story.title} ${story.summary} ${story.context}`
+            );
+            await serviceClient.from("experience_stories").insert({
+              framework_id: framework.id,
+              title: story.title,
+              summary: story.summary,
+              context: story.context,
+              decision: story.decision,
+              outcome: story.outcome,
+              lesson: story.lesson,
+              embedding: JSON.stringify(storyEmbedding),
+              source_type: "audio",
+              source_id: id,
+            });
+          }
+
+          // framework 상태를 ready로 변경
+          if (framework.status === "building") {
+            await serviceClient
+              .from("judgment_frameworks")
+              .update({ status: "ready" })
+              .eq("id", framework.id);
           }
         }
-
-        // If-Then 패턴 저장
-        for (const pattern of extraction.newPatterns) {
-          await serviceClient.from("if_then_patterns").insert({
-            framework_id: framework.id,
-            condition: pattern.condition,
-            action: pattern.action,
-            reasoning: pattern.reasoning,
-            confidence: 0.5,
-            source_type: "audio",
-            source_id: id,
-          });
-        }
-
-        // 경험 스토리 저장
-        for (const story of extraction.newStories) {
-          const storyEmbedding = await embedText(
-            `${story.title} ${story.summary} ${story.context}`
-          );
-          await serviceClient.from("experience_stories").insert({
-            framework_id: framework.id,
-            title: story.title,
-            summary: story.summary,
-            context: story.context,
-            decision: story.decision,
-            outcome: story.outcome,
-            lesson: story.lesson,
-            embedding: JSON.stringify(storyEmbedding),
-            source_type: "audio",
-            source_id: id,
-          });
-        }
-
-        extractedCount =
-          extraction.newAxes.length +
-          extraction.newPatterns.length +
-          extraction.newStories.length;
       } catch {
         // 추출 실패해도 기존 파이프라인 결과는 유지
       }
     }
 
-    // 8. 완료
+    // 6. 완료
     await serviceClient
       .from("file_uploads")
       .update({ status: "done" })
       .eq("id", id);
-
-    return NextResponse.json({
-      success: true,
-      chunks_count: chunks.length,
-      transcript_length: transcript.length,
-      judgment_extracted: extractedCount,
-    });
   } catch (error) {
     await serviceClient
       .from("file_uploads")
       .update({ status: "error" })
       .eq("id", id);
-
-    const message = error instanceof Error ? error.message : "Processing failed";
-    return NextResponse.json({ error: message }, { status: 500 });
+    console.error("Process error:", error);
   }
 }
