@@ -31,20 +31,46 @@ export default function FilesPage() {
   const uploadFile = useCallback(async (file: File) => {
     setUploading(true);
     try {
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append("persona_id", id);
+      const { createClient } = await import("@/lib/supabase/client");
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
 
-      const res = await fetch("/api/files/upload", {
-        method: "POST",
-        body: formData,
-      });
+      // 파일명 sanitize — UUID + 확장자
+      const ext = file.name.split(".").pop() || "mp3";
+      const safeFileName = `${crypto.randomUUID()}.${ext}`;
+      const filePath = `${user.id}/${id}/${safeFileName}`;
 
-      if (res.ok) {
-        const upload = await res.json();
-        processFile(upload.id);
-        await loadFiles();
+      // 1. 클라이언트에서 Supabase Storage에 직접 업로드 (용량 제한 없음)
+      const { error: storageError } = await supabase.storage
+        .from("uploads")
+        .upload(filePath, file);
+
+      if (storageError) {
+        alert(`업로드 실패: ${storageError.message}`);
+        return;
       }
+
+      // 2. DB 레코드 생성
+      const { data: upload, error: dbError } = await supabase
+        .from("file_uploads")
+        .insert({
+          persona_id: id,
+          file_name: file.name,
+          file_path: filePath,
+          status: "uploaded",
+        })
+        .select()
+        .single();
+
+      if (dbError || !upload) {
+        alert(`DB 오류: ${dbError?.message}`);
+        return;
+      }
+
+      // 3. 처리 시작
+      processFile(upload.id);
+      await loadFiles();
     } finally {
       setUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = "";

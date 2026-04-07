@@ -29,8 +29,10 @@ export async function POST(request: Request) {
     .single();
   if (!persona) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  // Supabase Storage에 업로드
-  const filePath = `${user.id}/${personaId}/${Date.now()}_${file.name}`;
+  // 파일명 sanitize — UUID + 확장자 (특수문자 문제 방지)
+  const ext = (file.name || "audio.mp3").split(".").pop() || "mp3";
+  const safeFileName = `${crypto.randomUUID()}.${ext}`;
+  const filePath = `${user.id}/${personaId}/${safeFileName}`;
   const { error: uploadError } = await supabase.storage
     .from("uploads")
     .upload(filePath, file);
