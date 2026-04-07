@@ -7,7 +7,7 @@ import { embedText } from "@/lib/embedding";
 import type { Persona } from "@/types";
 import { NextResponse } from "next/server";
 
-export const maxDuration = 60;
+export const maxDuration = 120;
 
 interface ConsultResult {
   judgment: string;
@@ -95,12 +95,20 @@ export async function POST(request: Request) {
   try {
     const queryEmbedding = await embedText(situation);
 
-    // RAG 검색 (임베딩 재사용)
-    const { data: ragData } = await supabase.rpc("match_chunks", {
-      query_embedding: queryEmbedding,
-      target_persona_id: persona_id,
-      match_count: 5,
-    });
+    // RAG + 스토리 검색 병렬 실행 (같은 임베딩 재사용)
+    const [{ data: ragData }, { data: storyData }] = await Promise.all([
+      supabase.rpc("match_chunks", {
+        query_embedding: queryEmbedding,
+        target_persona_id: persona_id,
+        match_count: 5,
+      }),
+      supabase.rpc("match_stories", {
+        query_embedding: queryEmbedding,
+        target_framework_id: frameworkData.framework.id,
+        match_count: 3,
+      }),
+    ]);
+
     if (ragData && ragData.length > 0) {
       ragContext = ragData
         .map((r: { content: string; metadata?: { source?: string } }, i: number) => {
@@ -109,13 +117,6 @@ export async function POST(request: Request) {
         })
         .join("\n\n");
     }
-
-    // 경험 스토리 검색 (같은 임베딩 재사용)
-    const { data: storyData } = await supabase.rpc("match_stories", {
-      query_embedding: queryEmbedding,
-      target_framework_id: frameworkData.framework.id,
-      match_count: 3,
-    });
     similarStories = storyData;
   } catch {
     // 임베딩/검색 실패 시 무시 — 프레임워크 데이터만으로 응답

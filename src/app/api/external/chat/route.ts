@@ -61,24 +61,33 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Persona not found" }, { status: 404 });
   }
 
-  // RAG 검색
-  const results = await searchChunks(persona_id, message, 5);
-  const context = formatContext(results);
+  try {
+    // RAG 검색 + 프레임워크 로드 병렬 실행
+    const [results, frameworkData] = await Promise.all([
+      searchChunks(persona_id, message, 5),
+      loadFramework(persona_id),
+    ]);
+    const context = formatContext(results);
 
-  // 프레임워크 로드 (있으면 프레임워크 기반, 없으면 기존 방식)
-  const frameworkData = await loadFramework(persona_id);
+    // 시스템 프롬프트
+    const systemPrompt = buildSystemPrompt(
+      persona as Persona,
+      context,
+      frameworkData ?? undefined
+    );
 
-  // 시스템 프롬프트
-  const systemPrompt = buildSystemPrompt(
-    persona as Persona,
-    context,
-    frameworkData ?? undefined
-  );
+    // LLM 호출
+    const response = await chat(systemPrompt, [
+      { role: "user", content: message },
+    ]);
 
-  // LLM 호출
-  const response = await chat(systemPrompt, [
-    { role: "user", content: message },
-  ]);
-
-  return NextResponse.json({ response, persona_id });
+    return NextResponse.json({ response, persona_id });
+  } catch (error) {
+    console.error("Chat error:", error);
+    const msg = error instanceof Error ? error.message : "Unknown error";
+    return NextResponse.json(
+      { error: `Chat failed: ${msg}` },
+      { status: 500 }
+    );
+  }
 }
