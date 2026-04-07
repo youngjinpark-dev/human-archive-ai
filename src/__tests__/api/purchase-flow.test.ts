@@ -40,14 +40,14 @@ describe("Purchase flow logic", () => {
 
   describe("purchase validation", () => {
     it("prevents self-purchase", () => {
-      const sellerId = "user-1";
-      const buyerId = "user-1";
+      const sellerId: string = "user-1";
+      const buyerId: string = "user-1";
       expect(sellerId === buyerId).toBe(true);
     });
 
     it("allows purchase from different user", () => {
-      const sellerId = "user-1";
-      const buyerId = "user-2";
+      const sellerId: string = "user-1";
+      const buyerId: string = "user-2";
       expect(sellerId === buyerId).toBe(false);
     });
 
@@ -57,24 +57,24 @@ describe("Purchase flow logic", () => {
     });
 
     it("amount validation", () => {
-      const purchaseAmount = 10000;
-      const requestAmount = 10000;
+      const purchaseAmount: number = 10000;
+      const requestAmount: number = 10000;
       expect(purchaseAmount === requestAmount).toBe(true);
 
-      const mismatchAmount = 5000;
+      const mismatchAmount: number = 5000;
       expect(purchaseAmount === mismatchAmount).toBe(false);
     });
   });
 
   describe("payment status transitions", () => {
     it("pending → confirmed on success", () => {
-      const tossStatus = "DONE";
+      const tossStatus: string = "DONE";
       const newStatus = tossStatus === "DONE" ? "confirmed" : "failed";
       expect(newStatus).toBe("confirmed");
     });
 
     it("pending → failed on failure", () => {
-      const tossStatus = "FAILED";
+      const tossStatus: string = "FAILED";
       const newStatus = tossStatus === "DONE" ? "confirmed" : "failed";
       expect(newStatus).toBe("failed");
     });
@@ -83,29 +83,29 @@ describe("Purchase flow logic", () => {
 
 describe("Webhook idempotency", () => {
   it("DONE event updates to confirmed only if not already confirmed", () => {
-    const eventStatus = "DONE";
-    const currentStatus = "pending";
+    const eventStatus: string = "DONE";
+    const currentStatus: string = "pending";
     const shouldUpdate = eventStatus === "DONE" && currentStatus !== "confirmed";
     expect(shouldUpdate).toBe(true);
   });
 
   it("DONE event skips if already confirmed", () => {
-    const eventStatus = "DONE";
-    const currentStatus = "confirmed";
+    const eventStatus: string = "DONE";
+    const currentStatus: string = "confirmed";
     const shouldUpdate = eventStatus === "DONE" && currentStatus !== "confirmed";
     expect(shouldUpdate).toBe(false);
   });
 
   it("CANCELED event updates to cancelled", () => {
-    const eventStatus = "CANCELED";
-    const currentStatus = "confirmed";
+    const eventStatus: string = "CANCELED";
+    const currentStatus: string = "confirmed";
     const shouldUpdate = eventStatus === "CANCELED" && currentStatus !== "cancelled";
     expect(shouldUpdate).toBe(true);
   });
 
   it("CANCELED event skips if already cancelled", () => {
-    const eventStatus = "CANCELED";
-    const currentStatus = "cancelled";
+    const eventStatus: string = "CANCELED";
+    const currentStatus: string = "cancelled";
     const shouldUpdate = eventStatus === "CANCELED" && currentStatus !== "cancelled";
     expect(shouldUpdate).toBe(false);
   });

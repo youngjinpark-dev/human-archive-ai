@@ -127,6 +127,43 @@ export async function GET() {
         description:
           "구매한 페르소나 목록을 조회합니다. 구매한 페르소나는 chat 도구로 무제한 대화 가능합니다.",
       },
+      {
+        name: "consult_judgment",
+        description:
+          "전문가의 판단 프레임워크를 기반으로 특정 상황에 대한 판단을 자문합니다. 판단 축, 경험 스토리, if-then 패턴을 종합하여 '이 전문가라면 어떻게 판단할까'를 답변합니다.",
+        parameters: {
+          persona_id: "페르소나 UUID",
+          situation: "판단이 필요한 상황 설명",
+        },
+      },
+      {
+        name: "get_framework",
+        description:
+          "전문가의 판단 프레임워크를 조회합니다. 판단 축, if-then 패턴, 경험 스토리 목록을 구조화된 형태로 반환합니다.",
+        parameters: {
+          persona_id: "페르소나 UUID",
+        },
+      },
+      {
+        name: "find_similar_story",
+        description:
+          "전문가의 경험 스토리 중 현재 상황과 유사한 에피소드를 검색합니다. RAG 기반 유사도 검색으로 관련 스토리를 찾습니다.",
+        parameters: {
+          persona_id: "페르소나 UUID",
+          query: "검색할 상황이나 키워드",
+        },
+      },
+      {
+        name: "compare_approaches",
+        description:
+          "두 가지 접근법에 대해 전문가의 관점으로 비교 분석합니다. 각 접근법의 장단점을 판단 프레임워크에 기반하여 평가합니다.",
+        parameters: {
+          persona_id: "페르소나 UUID",
+          approach_a: "첫 번째 접근법",
+          approach_b: "두 번째 접근법",
+          context: "상황 설명 (선택)",
+        },
+      },
     ],
     workflow: {
       create_persona: {
@@ -137,7 +174,17 @@ export async function GET() {
           "3. upload_audio로 음성 파일 업로드 → 추가 지식 임베딩 (선택)",
           "4. chat으로 완성된 페르소나와 대화",
         ],
-        note: "인터뷰와 음성 업로드는 선택사항이지만 진행할수록 페르소나 답변 품질이 높아집니다.",
+        note: "인터뷰와 음성 업로드는 선택사항이지만 진행할수록 페르소나 답변 품질이 높아집니다. mode='deep'으로 심층 인터뷰를 진행하면 판단 프레임워크가 자동 구축됩니다.",
+      },
+      judgment: {
+        description: "전문가의 판단 프레임워크를 활용하는 워크플로우",
+        steps: [
+          "1. get_framework로 전문가의 판단 프레임워크 조회",
+          "2. consult_judgment로 특정 상황에 대한 판단 자문",
+          "3. find_similar_story로 유사 경험 스토리 검색",
+          "4. compare_approaches로 접근법 비교 분석",
+        ],
+        note: "판단 프레임워크는 심층 인터뷰(mode='deep') 또는 음성 업로드를 통해 구축됩니다.",
       },
       store: {
         description: "스토어에서 전문가 페르소나를 검색하고 구매하는 워크플로우",
@@ -205,6 +252,30 @@ export async function GET() {
           method: "GET",
           path: "/api/external/purchases",
           description: "구매한 페르소나 목록 조회",
+        },
+        {
+          method: "POST",
+          path: "/api/external/consult",
+          description: "판단 자문 (판단 프레임워크 기반)",
+          body: { persona_id: "string (UUID)", situation: "string" },
+        },
+        {
+          method: "GET",
+          path: "/api/external/framework",
+          description: "판단 프레임워크 조회",
+          query: { persona_id: "UUID" },
+        },
+        {
+          method: "POST",
+          path: "/api/external/stories",
+          description: "유사 경험 스토리 검색",
+          body: { persona_id: "string (UUID)", query: "string" },
+        },
+        {
+          method: "POST",
+          path: "/api/external/compare",
+          description: "접근법 비교 분석",
+          body: { persona_id: "string (UUID)", approach_a: "string", approach_b: "string", context: "string (선택)" },
         },
       ],
     },

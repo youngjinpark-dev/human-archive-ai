@@ -64,7 +64,7 @@ describe("Interview answer processing logic", () => {
 
   describe("scenarios phase", () => {
     it("merges extracted scenario with existing", () => {
-      const existing = [
+      const existing: { situation: string; decision: string; reasoning?: string }[] = [
         { situation: "기존상황", decision: "기존판단" },
       ];
       const extracted = {

@@ -24,16 +24,16 @@ describe("Store compare validation", () => {
     });
 
     it("allows buyer with confirmed purchase", () => {
-      const sellerId = "user-1";
-      const currentUserId = "user-2";
+      const sellerId: string = "user-1";
+      const currentUserId: string = "user-2";
       const isOwner = sellerId === currentUserId;
       const purchaseExists = true;
       expect(isOwner || purchaseExists).toBe(true);
     });
 
     it("denies non-owner without purchase", () => {
-      const sellerId = "user-1";
-      const currentUserId = "user-2";
+      const sellerId: string = "user-1";
+      const currentUserId: string = "user-2";
       const isOwner = sellerId === currentUserId;
       const purchaseExists = false;
       expect(isOwner || purchaseExists).toBe(false);

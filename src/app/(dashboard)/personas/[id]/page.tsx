@@ -54,7 +54,7 @@ export default function PersonaDetailPage() {
       </div>
 
       {/* 액션 카드 */}
-      <div className="grid gap-4 sm:grid-cols-3 mb-8">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-8">
         <Link
           href={`/personas/${id}/interview`}
           className="border rounded-lg p-5 hover:border-blue-300 transition text-center"
@@ -83,6 +83,16 @@ export default function PersonaDetailPage() {
           <h3 className="font-medium">파일 관리</h3>
           <p className="text-sm text-gray-500 mt-1">
             녹음/영상 파일을 업로드합니다
+          </p>
+        </Link>
+        <Link
+          href={`/personas/${id}/publish`}
+          className="border rounded-lg p-5 hover:border-blue-300 transition text-center"
+        >
+          <div className="text-2xl mb-2">🏪</div>
+          <h3 className="font-medium">스토어 등록</h3>
+          <p className="text-sm text-gray-500 mt-1">
+            스토어에 판매 등록합니다
           </p>
         </Link>
       </div>

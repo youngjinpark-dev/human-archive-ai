@@ -88,6 +88,10 @@ export default function Home() {
           <li>store_search — 스토어에서 전문가 페르소나 검색 (query: 검색어, category: 카테고리)</li>
           <li>store_preview — 스토어 페르소나 시식/체험. 페르소나당 2회 무료 (listing_id, message)</li>
           <li>my_purchased_personas — 구매한 페르소나 목록 조회 (파라미터 없음)</li>
+          <li>consult_judgment — 전문가의 판단 프레임워크 기반 상황 자문 (persona_id, situation)</li>
+          <li>get_framework — 전문가의 판단 프레임워크 조회 (persona_id)</li>
+          <li>find_similar_story — 유사 경험 스토리 검색 (persona_id, query)</li>
+          <li>compare_approaches — 두 접근법 전문가 관점 비교 (persona_id, approach_a, approach_b, context)</li>
         </ul>
         <h3>페르소나 스토어</h3>
         <p>
@@ -120,6 +124,10 @@ export default function Home() {
           <li>GET /api/external/store — 스토어 검색 (헤더: x-api-key, 쿼리: q, category, sort)</li>
           <li>POST /api/external/store/[id]/trial — 스토어 시식 (헤더: x-api-key, 바디: message)</li>
           <li>GET /api/external/purchases — 구매 목록 (헤더: x-api-key)</li>
+          <li>POST /api/external/consult — 판단 자문 (헤더: x-api-key, 바디: persona_id, situation)</li>
+          <li>GET /api/external/framework — 판단 프레임워크 조회 (헤더: x-api-key, 쿼리: persona_id)</li>
+          <li>POST /api/external/stories — 유사 경험 검색 (헤더: x-api-key, 바디: persona_id, query)</li>
+          <li>POST /api/external/compare — 접근법 비교 (헤더: x-api-key, 바디: persona_id, approach_a, approach_b, context)</li>
         </ul>
       </div>
     </main>
