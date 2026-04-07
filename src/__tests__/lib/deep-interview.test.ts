@@ -68,13 +68,22 @@ describe("calculateSaturation", () => {
     expect(calculateSaturation([makeExtraction(1), makeExtraction(1)])).toBe(0);
   });
 
+  it("returns 0 when totalAnswerCount < 5", () => {
+    const extractions = [
+      makeExtraction(0, 0, 0),
+      makeExtraction(0, 0, 0),
+      makeExtraction(0, 0, 0),
+    ];
+    expect(calculateSaturation(extractions, 3, 3)).toBe(0);
+  });
+
   it("returns 1.0 when no new items in window", () => {
     const extractions = [
       makeExtraction(0, 0, 0),
       makeExtraction(0, 0, 0),
       makeExtraction(0, 0, 0),
     ];
-    expect(calculateSaturation(extractions)).toBe(1.0);
+    expect(calculateSaturation(extractions, 3, 10)).toBe(1.0);
   });
 
   it("returns 0.7 when 1-2 new items in window", () => {
@@ -83,7 +92,7 @@ describe("calculateSaturation", () => {
       makeExtraction(0, 0, 0),
       makeExtraction(0, 0, 0),
     ];
-    expect(calculateSaturation(extractions)).toBe(0.7);
+    expect(calculateSaturation(extractions, 3, 10)).toBe(0.7);
   });
 
   it("returns 0.3 when 3-5 new items in window", () => {
@@ -92,7 +101,7 @@ describe("calculateSaturation", () => {
       makeExtraction(0, 1, 0),
       makeExtraction(0, 0, 1),
     ];
-    expect(calculateSaturation(extractions)).toBe(0.3);
+    expect(calculateSaturation(extractions, 3, 10)).toBe(0.3);
   });
 
   it("returns 0 when many new items in window", () => {
@@ -101,7 +110,7 @@ describe("calculateSaturation", () => {
       makeExtraction(1, 1, 0),
       makeExtraction(0, 0, 0),
     ];
-    expect(calculateSaturation(extractions)).toBe(0);
+    expect(calculateSaturation(extractions, 3, 10)).toBe(0);
   });
 
   it("uses only last N items for window", () => {
@@ -111,7 +120,7 @@ describe("calculateSaturation", () => {
       makeExtraction(0, 0, 0),
       makeExtraction(0, 0, 0),
     ];
-    expect(calculateSaturation(extractions)).toBe(1.0);
+    expect(calculateSaturation(extractions, 3, 10)).toBe(1.0);
   });
 
   it("accepts custom window size", () => {
@@ -119,7 +128,7 @@ describe("calculateSaturation", () => {
       makeExtraction(0, 0, 0),
       makeExtraction(0, 0, 0),
     ];
-    expect(calculateSaturation(extractions, 2)).toBe(1.0);
+    expect(calculateSaturation(extractions, 2, 10)).toBe(1.0);
   });
 });
 

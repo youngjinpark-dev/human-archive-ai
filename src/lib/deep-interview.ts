@@ -111,8 +111,11 @@ export async function extractFromAnswer(
  */
 export function calculateSaturation(
   recentExtractions: ExtractionResult[],
-  windowSize: number = SATURATION_WINDOW
+  windowSize: number = SATURATION_WINDOW,
+  totalAnswerCount: number = 0
 ): number {
+  // 최소 5개 답변 전에는 포화로 판정하지 않음
+  if (totalAnswerCount < 5) return 0;
   if (recentExtractions.length < windowSize) return 0;
   const recent = recentExtractions.slice(-windowSize);
   const newItemsCount = recent.reduce(

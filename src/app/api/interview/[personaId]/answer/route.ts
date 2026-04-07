@@ -186,7 +186,7 @@ async function handleDeepAnswer(
       newStories: Array.isArray(a.extracted_stories) ? a.extracted_stories : [],
     })
   );
-  const saturation = calculateSaturation(recentExtractions);
+  const saturation = calculateSaturation(recentExtractions, 3, newAnsweredCount);
 
   // 세션 업데이트
   await supabase
