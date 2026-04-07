@@ -70,11 +70,10 @@ export async function extractJudgmentPatterns(
       ? `\n\n기존 판단 축: ${existingAxesNames.join(", ")}. 기존 축과 동일하면 새로 추출하지 말고, 보강 근거로만 추출하세요.`
       : "";
 
-  const [rawAxes, rawPatterns, rawStories] = await Promise.all([
-    extract<RawAxis[]>(text, EXTRACT_AXES_PROMPT + contextHint),
-    extract<RawPattern[]>(text, EXTRACT_PATTERNS_PROMPT),
-    extract<RawStory[]>(text, EXTRACT_STORIES_PROMPT),
-  ]);
+  // 순차 호출로 rate limit 방지
+  const rawAxes = await extract<RawAxis[]>(text, EXTRACT_AXES_PROMPT + contextHint);
+  const rawPatterns = await extract<RawPattern[]>(text, EXTRACT_PATTERNS_PROMPT);
+  const rawStories = await extract<RawStory[]>(text, EXTRACT_STORIES_PROMPT);
 
   const axes = Array.isArray(rawAxes) ? rawAxes : [];
   const patterns = Array.isArray(rawPatterns) ? rawPatterns : [];

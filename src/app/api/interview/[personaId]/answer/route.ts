@@ -54,7 +54,12 @@ export async function POST(
 
   // deep 모드 분기
   if (session.mode === "deep") {
-    return handleDeepAnswer(supabase, personaId, session, answer);
+    try {
+      return await handleDeepAnswer(supabase, personaId, session, answer);
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : "Deep interview error";
+      return NextResponse.json({ error: msg }, { status: 500 });
+    }
   }
 
   // === classic 모드 (기존 로직 유지) ===
