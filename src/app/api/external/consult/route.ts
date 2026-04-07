@@ -83,16 +83,27 @@ export async function POST(request: Request) {
   }
 
   // RAG 검색
-  const ragResults = await searchChunks(persona_id, situation, 5);
-  const ragContext = formatContext(ragResults);
+  let ragContext = "(관련 자료 없음)";
+  try {
+    const ragResults = await searchChunks(persona_id, situation, 5);
+    ragContext = formatContext(ragResults);
+  } catch {
+    // RAG 실패 시 무시
+  }
 
   // 경험 스토리 유사도 검색
-  const queryEmbedding = await embedText(situation);
-  const { data: similarStories } = await supabase.rpc("match_stories", {
-    query_embedding: queryEmbedding,
-    target_framework_id: frameworkData.framework.id,
-    match_count: 3,
-  });
+  let similarStories: { title: string; summary: string; decision: string }[] | null = null;
+  try {
+    const queryEmbedding = await embedText(situation);
+    const { data } = await supabase.rpc("match_stories", {
+      query_embedding: queryEmbedding,
+      target_framework_id: frameworkData.framework.id,
+      match_count: 3,
+    });
+    similarStories = data;
+  } catch {
+    // 임베딩/스토리 검색 실패 시 무시
+  }
 
   // 시스템 프롬프트 구성
   const systemPrompt = buildSystemPrompt(
