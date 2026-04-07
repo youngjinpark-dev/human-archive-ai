@@ -1,9 +1,7 @@
 import { createServiceClient } from "@/lib/supabase/server";
 import { hashApiKey } from "@/lib/api-key";
-import { chat } from "@/lib/llm";
-import { extract } from "@/lib/llm";
+import { chat, extract } from "@/lib/llm";
 import { buildSystemPrompt } from "@/lib/prompt";
-import { searchChunks, formatContext } from "@/lib/retriever";
 import { loadFramework } from "@/lib/framework-loader";
 import { embedText } from "@/lib/embedding";
 import type { Persona } from "@/types";
@@ -90,27 +88,37 @@ export async function POST(request: Request) {
     );
   }
 
-  // RAG 검색
+  // 임베딩 1회만 수행 후 RAG + 스토리 검색 모두 활용
   let ragContext = "(관련 자료 없음)";
-  try {
-    const ragResults = await searchChunks(persona_id, situation, 5);
-    ragContext = formatContext(ragResults);
-  } catch {
-    // RAG 실패 시 무시
-  }
-
-  // 경험 스토리 유사도 검색
   let similarStories: { title: string; summary: string; decision: string }[] | null = null;
+
   try {
     const queryEmbedding = await embedText(situation);
-    const { data } = await supabase.rpc("match_stories", {
+
+    // RAG 검색 (임베딩 재사용)
+    const { data: ragData } = await supabase.rpc("match_chunks", {
+      query_embedding: queryEmbedding,
+      target_persona_id: persona_id,
+      match_count: 5,
+    });
+    if (ragData && ragData.length > 0) {
+      ragContext = ragData
+        .map((r: { content: string; metadata?: { source?: string } }, i: number) => {
+          const source = r.metadata?.source ?? "참고자료";
+          return `[${i + 1}] (${source})\n${r.content}`;
+        })
+        .join("\n\n");
+    }
+
+    // 경험 스토리 검색 (같은 임베딩 재사용)
+    const { data: storyData } = await supabase.rpc("match_stories", {
       query_embedding: queryEmbedding,
       target_framework_id: frameworkData.framework.id,
       match_count: 3,
     });
-    similarStories = data;
+    similarStories = storyData;
   } catch {
-    // 임베딩/스토리 검색 실패 시 무시
+    // 임베딩/검색 실패 시 무시 — 프레임워크 데이터만으로 응답
   }
 
   // 시스템 프롬프트 구성
