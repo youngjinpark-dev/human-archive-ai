@@ -15,7 +15,7 @@ export interface StoreListing {
   view_count: number;
   trial_count: number;
   purchase_count: number;
-  avg_rating: number | null;
+  rating_avg: number | null;
   quality_score?: { verification_level?: string } | null;
   status: string;
   created_at: string;
@@ -53,8 +53,8 @@ export default function StoreCard({ listing }: { listing: StoreListing }) {
       <div className="mt-3 flex gap-3 text-xs text-gray-400">
         <span>조회 {listing.view_count}</span>
         <span>시식 {listing.trial_count}</span>
-        {listing.avg_rating !== null && (
-          <span>★ {listing.avg_rating.toFixed(1)}</span>
+        {listing.rating_avg !== null && (
+          <span>★ {listing.rating_avg.toFixed(1)}</span>
         )}
       </div>
       <div className="mt-3">

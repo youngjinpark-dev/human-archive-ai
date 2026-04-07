@@ -19,7 +19,7 @@ function makeListing(overrides: Partial<StoreListing> = {}): StoreListing {
     view_count: 100,
     trial_count: 50,
     purchase_count: 10,
-    avg_rating: 4.5,
+    rating_avg: 4.5,
     status: "active",
     created_at: "2026-01-01T00:00:00Z",
     ...overrides,
@@ -59,12 +59,12 @@ describe("StoreCard component", () => {
   });
 
   it("renders rating when provided", () => {
-    render(<StoreCard listing={makeListing({ avg_rating: 4.5 })} />);
+    render(<StoreCard listing={makeListing({ rating_avg: 4.5 })} />);
     expect(screen.getByText("★ 4.5")).toBeInTheDocument();
   });
 
   it("hides rating when null", () => {
-    render(<StoreCard listing={makeListing({ avg_rating: null })} />);
+    render(<StoreCard listing={makeListing({ rating_avg: null })} />);
     expect(screen.queryByText(/★/)).not.toBeInTheDocument();
   });
 

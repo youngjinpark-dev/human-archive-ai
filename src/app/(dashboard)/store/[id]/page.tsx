@@ -19,7 +19,7 @@ interface ListingDetail {
   view_count: number;
   trial_count: number;
   purchase_count: number;
-  avg_rating: number | null;
+  rating_avg: number | null;
   quality_score: {
     eligible: boolean;
     interview_done: boolean;
@@ -173,8 +173,8 @@ export default function StoreDetailPage() {
           <span>조회 {listing.view_count}</span>
           <span>시식 {listing.trial_count}</span>
           <span>구매 {listing.purchase_count}</span>
-          {listing.avg_rating !== null && (
-            <span>★ {listing.avg_rating.toFixed(1)}</span>
+          {listing.rating_avg !== null && (
+            <span>★ {listing.rating_avg.toFixed(1)}</span>
           )}
         </div>
 
