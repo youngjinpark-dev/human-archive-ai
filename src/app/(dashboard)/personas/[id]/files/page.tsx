@@ -188,14 +188,24 @@ export default function FilesPage() {
                   {statusLabel[f.status]}
                 </p>
               </div>
-              {f.status === "uploaded" && (
-                <button
-                  onClick={() => processFile(f.id)}
-                  className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
-                >
-                  처리 시작
-                </button>
-              )}
+              <div className="flex gap-3">
+                {f.status === "uploaded" && (
+                  <button
+                    onClick={() => processFile(f.id)}
+                    className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
+                  >
+                    처리 시작
+                  </button>
+                )}
+                {(f.status === "done" || f.status === "error") && (
+                  <button
+                    onClick={() => processFile(f.id)}
+                    className="text-sm text-slate-500 dark:text-slate-400 hover:underline"
+                  >
+                    재처리
+                  </button>
+                )}
+              </div>
             </div>
           ))}
         </div>

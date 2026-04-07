@@ -179,7 +179,7 @@ export async function transcribeAudio(
             role: "user",
             parts: [
               { inlineData: { data: base64, mimeType } },
-              { text: "이 오디오를 한국어로 정확히 텍스트로 변환해 주세요. 말한 내용만 텍스트로 출력하고, 다른 설명은 추가하지 마세요." },
+              { text: "이 오디오를 한국어로 정확히 텍스트로 변환해 주세요. 말한 내용만 텍스트로 출력하고, 다른 설명은 추가하지 마세요. 주제가 바뀌거나 화자가 바뀌는 지점에서 줄바꿈을 넣어 주세요." },
             ],
           },
         ],
@@ -215,7 +215,7 @@ export async function transcribeAudio(
           role: "user",
           parts: [
             { fileData: { fileUri: file.uri!, mimeType } },
-            { text: "이 오디오를 한국어로 정확히 텍스트로 변환해 주세요. 말한 내용만 텍스트로 출력하고, 다른 설명은 추가하지 마세요." },
+            { text: "이 오디오를 한국어로 정확히 텍스트로 변환해 주세요. 말한 내용만 텍스트로 출력하고, 다른 설명은 추가하지 마세요. 주제가 바뀌거나 화자가 바뀌는 지점에서 줄바꿈을 넣어 주세요." },
           ],
         },
       ],

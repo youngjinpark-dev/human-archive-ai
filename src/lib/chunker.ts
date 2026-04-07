@@ -17,11 +17,33 @@ export function chunkText(
 
   if (!text.trim()) return [];
 
-  // 문단 단위로 분리
-  const paragraphs = text
+  // 문단 단위로 분리 (빈 줄, 단일 줄바꿈, 또는 문장 끝 마침표+공백)
+  const segments = text
     .split(/\n\s*\n/)
-    .map((p) => p.trim())
+    .flatMap((p) => p.split(/\n/))
+    .map((s) => s.trim())
     .filter(Boolean);
+
+  // 분리된 세그먼트가 여전히 maxChars 초과하면 문장 단위로 강제 분할
+  const paragraphs: string[] = [];
+  for (const seg of segments) {
+    if (seg.length <= maxChars) {
+      paragraphs.push(seg);
+    } else {
+      // 문장 부호(. ? ! 。) 기준으로 분할
+      const sentences = seg.match(/[^.?!。]+[.?!。]?\s*/g) ?? [seg];
+      let buf = "";
+      for (const sentence of sentences) {
+        if (buf.length + sentence.length > maxChars && buf.length > 0) {
+          paragraphs.push(buf.trim());
+          buf = sentence;
+        } else {
+          buf += sentence;
+        }
+      }
+      if (buf.trim()) paragraphs.push(buf.trim());
+    }
+  }
 
   const chunks: TextChunk[] = [];
   let current = "";
@@ -34,9 +56,9 @@ export function chunkText(
       });
       // overlap: 이전 청크 끝부분 유지
       const overlapText = current.slice(-overlap);
-      current = overlapText + "\n\n" + para;
+      current = overlapText + " " + para;
     } else {
-      current = current ? current + "\n\n" + para : para;
+      current = current ? current + " " + para : para;
     }
   }
 
