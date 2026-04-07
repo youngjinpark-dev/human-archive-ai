@@ -9,6 +9,7 @@ export default function FilesPage() {
   const [files, setFiles] = useState<FileUpload[]>([]);
   const [uploading, setUploading] = useState(false);
   const [dragOver, setDragOver] = useState(false);
+  const [processingIds, setProcessingIds] = useState<Set<string>>(new Set());
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -100,12 +101,14 @@ export default function FilesPage() {
   }
 
   async function processFile(fileId: string) {
+    if (processingIds.has(fileId)) return; // 중복 클릭 방지
+    setProcessingIds((prev) => new Set(prev).add(fileId));
+
     // 처리를 fire-and-forget으로 시작
-    fetch(`/api/files/${fileId}/process`, { method: "POST" }).then(() => loadFiles());
+    fetch(`/api/files/${fileId}/process`, { method: "POST" });
 
     // 처리 중 상태를 폴링으로 반영
     const poll = setInterval(async () => {
-      await loadFiles();
       const { createClient } = await import("@/lib/supabase/client");
       const supabase = createClient();
       const { data } = await supabase
@@ -113,8 +116,17 @@ export default function FilesPage() {
         .select("status")
         .eq("id", fileId)
         .single();
-      if (data && (data.status === "done" || data.status === "error")) {
-        clearInterval(poll);
+      if (data) {
+        setFiles((prev) => prev.map((f) => (f.id === fileId ? { ...f, status: data.status } : f)));
+        if (data.status === "done" || data.status === "error") {
+          clearInterval(poll);
+          setProcessingIds((prev) => {
+            const next = new Set(prev);
+            next.delete(fileId);
+            return next;
+          });
+          await loadFiles();
+        }
       }
     }, 3000);
   }
@@ -177,37 +189,53 @@ export default function FilesPage() {
         <p className="text-center text-slate-400 dark:text-slate-500">업로드된 파일이 없습니다.</p>
       ) : (
         <div className="space-y-3">
-          {files.map((f) => (
-            <div
-              key={f.id}
-              className="flex items-center justify-between border border-slate-200 dark:border-slate-700 rounded-lg p-4 bg-white dark:bg-slate-800"
-            >
-              <div>
-                <p className="font-medium text-sm dark:text-slate-200">{f.file_name}</p>
-                <p className={`text-xs mt-1 ${statusColor[f.status]}`}>
-                  {statusLabel[f.status]}
-                </p>
-              </div>
-              <div className="flex gap-3">
-                {f.status === "uploaded" && (
-                  <button
-                    onClick={() => processFile(f.id)}
-                    className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
-                  >
-                    처리 시작
-                  </button>
+          {files.map((f) => {
+            const isProcessing = processingIds.has(f.id) || f.status === "transcribing" || f.status === "embedding";
+            return (
+              <div
+                key={f.id}
+                className="border border-slate-200 dark:border-slate-700 rounded-lg p-4 bg-white dark:bg-slate-800 overflow-hidden"
+              >
+                <div className="flex items-center justify-between">
+                  <div className="min-w-0 flex-1">
+                    <p className="font-medium text-sm dark:text-slate-200 truncate">{f.file_name}</p>
+                    <p className={`text-xs mt-1 ${statusColor[f.status]}`}>
+                      {statusLabel[f.status]}
+                    </p>
+                  </div>
+                  <div className="flex gap-3 ml-4 shrink-0">
+                    {f.status === "uploaded" && !isProcessing && (
+                      <button
+                        onClick={() => processFile(f.id)}
+                        className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
+                      >
+                        처리 시작
+                      </button>
+                    )}
+                    {(f.status === "done" || f.status === "error") && !isProcessing && (
+                      <button
+                        onClick={() => processFile(f.id)}
+                        className="text-sm text-slate-500 dark:text-slate-400 hover:underline"
+                      >
+                        재처리
+                      </button>
+                    )}
+                    {isProcessing && (
+                      <span className="text-xs text-slate-400 dark:text-slate-500">처리 중...</span>
+                    )}
+                  </div>
+                </div>
+                {isProcessing && (
+                  <div className="mt-3 w-full bg-slate-200 dark:bg-slate-700 rounded-full h-1.5 overflow-hidden">
+                    <div className="bg-blue-500 h-full rounded-full animate-pulse" style={{
+                      width: f.status === "embedding" ? "75%" : "40%",
+                      transition: "width 1s ease",
+                    }} />
+                  </div>
                 )}
-                {(f.status === "done" || f.status === "error") && (
-                  <button
-                    onClick={() => processFile(f.id)}
-                    className="text-sm text-slate-500 dark:text-slate-400 hover:underline"
-                  >
-                    재처리
-                  </button>
-                )}
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>
