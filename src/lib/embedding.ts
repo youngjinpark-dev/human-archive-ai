@@ -5,19 +5,20 @@
  * 단, 차원이 변경되면 DB 스키마 + 기존 데이터 재임베딩 필요
  */
 
-import { getGeminiClient } from "@/lib/gemini-pool";
+import { withRetry } from "@/lib/gemini-pool";
 
 const EMBEDDING_MODEL = "gemini-embedding-001";
 const EMBEDDING_DIMENSIONS = 768;
 
 export async function embedText(text: string): Promise<number[]> {
-  const ai = getGeminiClient();
-  const response = await ai.models.embedContent({
-    model: EMBEDDING_MODEL,
-    contents: text,
-    config: { outputDimensionality: EMBEDDING_DIMENSIONS },
+  return withRetry(async (client) => {
+    const response = await client.models.embedContent({
+      model: EMBEDDING_MODEL,
+      contents: text,
+      config: { outputDimensionality: EMBEDDING_DIMENSIONS },
+    });
+    return response.embeddings?.[0]?.values ?? [];
   });
-  return response.embeddings?.[0]?.values ?? [];
 }
 
 export async function embedTexts(texts: string[]): Promise<number[][]> {

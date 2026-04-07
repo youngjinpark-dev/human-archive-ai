@@ -30,4 +30,40 @@ export function getGeminiClient(): GoogleGenAI {
   return client;
 }
 
+const RETRYABLE_CODES = new Set([429, 500, 503]);
+
+function isRetryable(error: unknown): boolean {
+  if (error instanceof Error) {
+    const msg = error.message;
+    // Gemini SDK wraps HTTP status in error message
+    if (RETRYABLE_CODES.has(Number((msg.match(/\b(\d{3})\b/)?.[1])))) return true;
+    if (/UNAVAILABLE|RESOURCE_EXHAUSTED|too many requests|overloaded/i.test(msg)) return true;
+  }
+  return false;
+}
+
+/**
+ * 모든 키를 순회하며 fn을 시도한다.
+ * 재시도 가능한 에러(429/500/503)면 다음 키로 넘어가고,
+ * 그 외 에러는 즉시 throw한다.
+ */
+export async function withRetry<T>(fn: (client: GoogleGenAI) => Promise<T>): Promise<T> {
+  if (clients.length === 0) {
+    throw new Error("GEMINI_API_KEY 환경변수가 설정되지 않았습니다.");
+  }
+
+  let lastError: unknown;
+  for (let i = 0; i < clients.length; i++) {
+    const client = getGeminiClient();
+    try {
+      return await fn(client);
+    } catch (error) {
+      lastError = error;
+      if (!isRetryable(error)) throw error;
+      // retryable → 다음 키로 계속
+    }
+  }
+  throw lastError;
+}
+
 export const POOL_SIZE = clients.length;

@@ -7,7 +7,7 @@
  * 지원 예정: Claude, GPT-4o, Gemini Pro 등
  */
 
-import { getGeminiClient } from "@/lib/gemini-pool";
+import { getGeminiClient, withRetry } from "@/lib/gemini-pool";
 
 // ============================================================
 // 설정 — 모델 교체 시 여기만 변경
@@ -31,23 +31,25 @@ export async function chat(
     parts: [{ text: m.content }],
   }));
 
-  const response = await getGeminiClient().models.generateContent({
-    model: MODEL,
-    contents,
-    config: {
-      systemInstruction: systemPrompt,
-      temperature: options?.temperature ?? 0.7,
-      maxOutputTokens: options?.maxTokens ?? 4096,
-      thinkingConfig: THINKING_CONFIG,
-    },
-  });
+  return withRetry(async (client) => {
+    const response = await client.models.generateContent({
+      model: MODEL,
+      contents,
+      config: {
+        systemInstruction: systemPrompt,
+        temperature: options?.temperature ?? 0.7,
+        maxOutputTokens: options?.maxTokens ?? 4096,
+        thinkingConfig: THINKING_CONFIG,
+      },
+    });
 
-  // thought 파트 제외, 텍스트만 추출
-  const parts = response.candidates?.[0]?.content?.parts ?? [];
-  return parts
-    .filter((p) => !p.thought && p.text)
-    .map((p) => p.text)
-    .join("");
+    // thought 파트 제외, 텍스트만 추출
+    const parts = response.candidates?.[0]?.content?.parts ?? [];
+    return parts
+      .filter((p) => !p.thought && p.text)
+      .map((p) => p.text)
+      .join("");
+  });
 }
 
 // ============================================================
@@ -68,16 +70,18 @@ export async function* streamChat(
     parts: [{ text: m.content }],
   }));
 
-  const stream = await getGeminiClient().models.generateContentStream({
-    model: MODEL,
-    contents,
-    config: {
-      systemInstruction: systemPrompt,
-      temperature: options?.temperature ?? 0.7,
-      maxOutputTokens: options?.maxTokens ?? 4096,
-      thinkingConfig: THINKING_CONFIG,
-    },
-  });
+  const stream = await withRetry((client) =>
+    client.models.generateContentStream({
+      model: MODEL,
+      contents,
+      config: {
+        systemInstruction: systemPrompt,
+        temperature: options?.temperature ?? 0.7,
+        maxOutputTokens: options?.maxTokens ?? 4096,
+        thinkingConfig: THINKING_CONFIG,
+      },
+    })
+  );
 
   let lastFinishReason: string | undefined;
 
@@ -111,24 +115,26 @@ export async function extract<T>(
   instruction: string
 ): Promise<T | null> {
   try {
-    const response = await getGeminiClient().models.generateContent({
-      model: MODEL,
-      contents: [{ role: "user", parts: [{ text }] }],
-      config: {
-        systemInstruction:
-          instruction + "\n\nJSON으로만 응답해. 다른 텍스트는 포함하지 마.",
-        temperature: 0.1,
-        maxOutputTokens: 1024,
-        thinkingConfig: THINKING_CONFIG,
-      },
-    });
+    const content = await withRetry(async (client) => {
+      const response = await client.models.generateContent({
+        model: MODEL,
+        contents: [{ role: "user", parts: [{ text }] }],
+        config: {
+          systemInstruction:
+            instruction + "\n\nJSON으로만 응답해. 다른 텍스트는 포함하지 마.",
+          temperature: 0.1,
+          maxOutputTokens: 1024,
+          thinkingConfig: THINKING_CONFIG,
+        },
+      });
 
-    // thought 파트 제외
-    const parts = response.candidates?.[0]?.content?.parts ?? [];
-    const content = parts
-      .filter((p) => !p.thought && p.text)
-      .map((p) => p.text)
-      .join("");
+      // thought 파트 제외
+      const parts = response.candidates?.[0]?.content?.parts ?? [];
+      return parts
+        .filter((p) => !p.thought && p.text)
+        .map((p) => p.text)
+        .join("");
+    });
 
     // JSON 추출
     const startBracket = content.indexOf("[");
@@ -162,34 +168,36 @@ export async function transcribeAudio(
 ): Promise<string> {
   const base64 = Buffer.from(audioBuffer).toString("base64");
 
-  const response = await getGeminiClient().models.generateContent({
-    model: MODEL,
-    contents: [
-      {
-        role: "user",
-        parts: [
-          {
-            inlineData: {
-              data: base64,
-              mimeType,
+  return withRetry(async (client) => {
+    const response = await client.models.generateContent({
+      model: MODEL,
+      contents: [
+        {
+          role: "user",
+          parts: [
+            {
+              inlineData: {
+                data: base64,
+                mimeType,
+              },
             },
-          },
-          {
-            text: "이 오디오를 한국어로 정확히 텍스트로 변환해 주세요. 말한 내용만 텍스트로 출력하고, 다른 설명은 추가하지 마세요.",
-          },
-        ],
+            {
+              text: "이 오디오를 한국어로 정확히 텍스트로 변환해 주세요. 말한 내용만 텍스트로 출력하고, 다른 설명은 추가하지 마세요.",
+            },
+          ],
+        },
+      ],
+      config: {
+        temperature: 0.1,
+        maxOutputTokens: 8192,
+        thinkingConfig: THINKING_CONFIG,
       },
-    ],
-    config: {
-      temperature: 0.1,
-      maxOutputTokens: 8192,
-      thinkingConfig: THINKING_CONFIG,
-    },
-  });
+    });
 
-  const parts = response.candidates?.[0]?.content?.parts ?? [];
-  return parts
-    .filter((p) => !p.thought && p.text)
-    .map((p) => p.text)
-    .join("");
+    const parts = response.candidates?.[0]?.content?.parts ?? [];
+    return parts
+      .filter((p) => !p.thought && p.text)
+      .map((p) => p.text)
+      .join("");
+  });
 }
