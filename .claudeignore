@@ -1,0 +1,25 @@
+# Dependencies
+node_modules/
+
+# Build output
+.next/
+out/
+build/
+tsconfig.tsbuildinfo
+
+# Lock files
+package-lock.json
+legacy/uv.lock
+
+# Legacy Python
+legacy/.venv/
+legacy/__pycache__/
+
+# Static assets
+public/
+
+# Docs
+docs/
+
+# Vercel
+.vercel/
