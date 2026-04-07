@@ -161,10 +161,66 @@ export default function Home() {
           </div>
         </section>
 
+        {/* How to Use — 페르소나 모드 */}
+        <section id="how-to-use" className="bg-slate-50/50 dark:bg-slate-800/30 py-24 px-6 border-y border-slate-100 dark:border-slate-800">
+          <div className="max-w-4xl mx-auto">
+            <div className="mb-12 text-center">
+              <h2 className="text-3xl font-extrabold tracking-tight mb-4 text-slate-900 dark:text-white">
+                AI가 전문가가 됩니다
+              </h2>
+              <p className="text-lg text-slate-600 dark:text-slate-300 max-w-2xl mx-auto">
+                MCP를 연결하면 AI가 전문가의 판단 체계를 내재화하고,
+                그 전문가의 관점으로 대화합니다.
+              </p>
+            </div>
+            <div className="space-y-6">
+              {[
+                {
+                  step: "1",
+                  title: "판단 프레임워크 로드",
+                  desc: "AI가 전문가의 판단 축, 패턴, 원칙을 MCP로 로드하여 내재화합니다.",
+                  code: "get_framework → 판단 축 8개, 패턴 14개, 원칙 5개 로드",
+                },
+                {
+                  step: "2",
+                  title: "전문가 관점으로 대화",
+                  desc: "AI가 전문가 본인처럼 1인칭으로 대화합니다. 일반적인 답변이 아닌, 그 전문가만의 판단 기준으로 조언합니다.",
+                  code: '"Notion 데이터 정리 전략 잡아줘" → 전문가의 판단 축(데이터 주권, AI 친화성)에 따라 답변',
+                },
+                {
+                  step: "3",
+                  title: "판단이 필요할 때 자동 참조",
+                  desc: "대화 중 의사결정이 필요한 순간, AI가 백그라운드에서 MCP를 호출하여 전문가의 프레임워크를 참조합니다.",
+                  code: "consult_judgment → 상황 분석 + 적용된 판단 축 + 매칭된 패턴 반환",
+                },
+              ].map((item) => (
+                <div key={item.step} className="flex gap-6 items-start bg-white dark:bg-slate-800 rounded-2xl p-6 border border-slate-100 dark:border-slate-700">
+                  <div className="shrink-0 w-10 h-10 bg-blue-600 text-white rounded-full flex items-center justify-center font-bold">
+                    {item.step}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-lg font-bold mb-1 text-slate-900 dark:text-white">{item.title}</h3>
+                    <p className="text-slate-600 dark:text-slate-300 mb-3">{item.desc}</p>
+                    <div className="bg-slate-100 dark:bg-slate-900 rounded-lg px-4 py-2 text-sm font-mono text-slate-700 dark:text-slate-300 overflow-x-auto">
+                      {item.code}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="mt-8 p-6 bg-blue-50 dark:bg-blue-950 rounded-2xl border border-blue-100 dark:border-blue-900">
+              <p className="text-sm text-blue-800 dark:text-blue-200 leading-relaxed">
+                <span className="font-bold">사용 예시:</span> &quot;구요한 전문가로서 우리 팀의 Notion 데이터 정리 전략을 잡아줘&quot;
+                → AI가 구요한의 판단 축(데이터 주권, 연결성, AI 친화성)을 기반으로 구체적인 전략을 제시합니다.
+              </p>
+            </div>
+          </div>
+        </section>
+
         {/* Features Grid */}
         <section
           id="features"
-          className="bg-slate-50/50 dark:bg-slate-800/30 py-24 px-6 border-y border-slate-100 dark:border-slate-800"
+          className="py-24 px-6"
         >
           <div className="max-w-7xl mx-auto">
             <div className="mb-16 text-center">
@@ -310,6 +366,25 @@ export default function Home() {
           <li>store_preview — 스토어 페르소나 시식</li>
           <li>my_purchased_personas — 구매한 페르소나 목록</li>
         </ul>
+        <h3>페르소나 모드 (권장 활용법)</h3>
+        <p>
+          사용자가 &quot;구요한 전문가로서 대화해줘&quot;처럼 요청하면,
+          AI 어시스턴트가 페르소나의 판단 체계를 내재화하여 그 전문가의 관점으로 대화합니다.
+          AI의 주체는 어시스턴트 자신이며, 중간중간 MCP 도구를 호출하여 전문가의 판단 기준을 참조합니다.
+        </p>
+        <p>워크플로우:</p>
+        <ol>
+          <li>get_framework로 전문가의 판단 축, 패턴, 원칙을 로드하여 내재화</li>
+          <li>사용자와 자유 대화 — AI가 전문가의 1인칭 관점으로 답변</li>
+          <li>판단이 필요한 순간에 consult_judgment를 호출하여 프레임워크 기반 판단 참조</li>
+          <li>관련 경험이 필요하면 find_similar_story로 전문가의 과거 사례 검색</li>
+          <li>선택지 비교가 필요하면 compare_approaches로 전문가 관점의 비교 분석</li>
+        </ol>
+        <p>
+          이 모드에서 AI는 전문가 본인처럼 대화합니다.
+          도구 호출은 자연스럽게 백그라운드에서 이루어지며,
+          사용자에게는 전문가와 직접 대화하는 경험을 제공합니다.
+        </p>
       </div>
     </>
   );
