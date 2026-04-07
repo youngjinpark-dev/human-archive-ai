@@ -125,9 +125,7 @@ async function processUpload(id: string, upload: any) {
             .eq("framework_id", framework.id);
           const axesNames = (existingAxes ?? []).map((a: { name: string }) => a.name);
 
-          // 트랜스크립트가 너무 길면 앞부분만 사용 (extract의 maxOutputTokens 제한)
-          const textForExtraction = transcript.length > 6000 ? transcript.slice(0, 6000) : transcript;
-          const extraction = await extractJudgmentPatterns(textForExtraction, axesNames);
+          const extraction = await extractJudgmentPatterns(transcript, axesNames);
           console.log(`[process] Extracted: ${extraction.newAxes.length} axes, ${extraction.newPatterns.length} patterns, ${extraction.newStories.length} stories`);
 
           for (const axis of extraction.newAxes) {
