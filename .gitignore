@@ -1,0 +1,41 @@
+# Dependencies
+node_modules/
+/.pnp
+.pnp.js
+.yarn/install-state.gz
+
+# Testing
+/coverage
+
+# Next.js
+/.next/
+/out/
+
+# Production
+/build
+
+# Misc
+*.pem
+.DS_Store
+
+# Debug
+npm-debug.log*
+
+# Env
+.env*.local
+
+# Vercel
+.vercel
+
+# MCP config (contains API keys)
+.mcp.json
+
+# TypeScript
+*.tsbuildinfo
+next-env.d.ts
+
+# Legacy Python
+legacy/.venv/
+legacy/__pycache__/
+legacy/**/__pycache__/
+legacy/*.py[oc]
