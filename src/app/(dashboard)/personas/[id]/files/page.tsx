@@ -100,14 +100,29 @@ export default function FilesPage() {
   }
 
   async function processFile(fileId: string) {
-    await fetch(`/api/files/${fileId}/process`, { method: "POST" });
-    await loadFiles();
+    // 처리를 fire-and-forget으로 시작
+    fetch(`/api/files/${fileId}/process`, { method: "POST" }).then(() => loadFiles());
+
+    // 처리 중 상태를 폴링으로 반영
+    const poll = setInterval(async () => {
+      await loadFiles();
+      const { createClient } = await import("@/lib/supabase/client");
+      const supabase = createClient();
+      const { data } = await supabase
+        .from("file_uploads")
+        .select("status")
+        .eq("id", fileId)
+        .single();
+      if (data && (data.status === "done" || data.status === "error")) {
+        clearInterval(poll);
+      }
+    }, 3000);
   }
 
   const statusLabel: Record<string, string> = {
     uploaded: "업로드됨",
-    transcribing: "변환 중...",
-    embedding: "임베딩 중...",
+    transcribing: "음성 변환 중... (1~5분 소요)",
+    embedding: "임베딩 중... (곧 완료됩니다)",
     done: "완료",
     error: "오류",
   };
