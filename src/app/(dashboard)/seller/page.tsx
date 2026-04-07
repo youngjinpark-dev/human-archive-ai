@@ -8,21 +8,26 @@ interface ListingStats {
   view_count: number;
   trial_count: number;
   purchase_count: number;
-  revenue: number;
+}
+
+interface DashboardStats {
+  total_sales: number;
+  total_revenue: number;
+  this_month_sales: number;
+  this_month_revenue: number;
 }
 
 interface DashboardData {
-  total_revenue: number;
-  total_purchases: number;
-  active_listings: number;
+  stats: DashboardStats;
   listings: ListingStats[];
 }
 
 interface Settlement {
-  id: string;
-  amount: number;
-  status: string;
-  created_at: string;
+  month: string;
+  total: number;
+  settled: number;
+  unsettled: number;
+  count: number;
 }
 
 export default function SellerDashboardPage() {
@@ -60,23 +65,29 @@ export default function SellerDashboardPage() {
       <h1 className="text-2xl font-bold mb-6">판매 대시보드</h1>
 
       {/* Stats cards */}
-      <div className="grid gap-4 sm:grid-cols-3 mb-8">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-8">
         <div className="border rounded-lg p-5">
           <p className="text-sm text-gray-500">총 매출</p>
           <p className="text-2xl font-bold mt-1">
-            ₩{(dashboard?.total_revenue ?? 0).toLocaleString()}
+            ₩{(dashboard?.stats?.total_revenue ?? 0).toLocaleString()}
           </p>
         </div>
         <div className="border rounded-lg p-5">
           <p className="text-sm text-gray-500">총 판매건수</p>
           <p className="text-2xl font-bold mt-1">
-            {dashboard?.total_purchases ?? 0}건
+            {dashboard?.stats?.total_sales ?? 0}건
           </p>
         </div>
         <div className="border rounded-lg p-5">
-          <p className="text-sm text-gray-500">활성 리스팅</p>
+          <p className="text-sm text-gray-500">이번 달 매출</p>
           <p className="text-2xl font-bold mt-1">
-            {dashboard?.active_listings ?? 0}개
+            ₩{(dashboard?.stats?.this_month_revenue ?? 0).toLocaleString()}
+          </p>
+        </div>
+        <div className="border rounded-lg p-5">
+          <p className="text-sm text-gray-500">이번 달 판매</p>
+          <p className="text-2xl font-bold mt-1">
+            {dashboard?.stats?.this_month_sales ?? 0}건
           </p>
         </div>
       </div>
@@ -92,8 +103,7 @@ export default function SellerDashboardPage() {
                   <th className="py-2 pr-4">제목</th>
                   <th className="py-2 pr-4">조회</th>
                   <th className="py-2 pr-4">시식</th>
-                  <th className="py-2 pr-4">구매</th>
-                  <th className="py-2">매출</th>
+                  <th className="py-2">구매</th>
                 </tr>
               </thead>
               <tbody>
@@ -104,7 +114,7 @@ export default function SellerDashboardPage() {
                     <td className="py-2 pr-4">{l.trial_count}</td>
                     <td className="py-2 pr-4">{l.purchase_count}</td>
                     <td className="py-2">
-                      ₩{l.revenue.toLocaleString()}
+                      {l.purchase_count}
                     </td>
                   </tr>
                 ))}
@@ -123,26 +133,21 @@ export default function SellerDashboardPage() {
           <div className="space-y-2">
             {settlements.map((s) => (
               <div
-                key={s.id}
+                key={s.month}
                 className="flex items-center justify-between border rounded-lg p-3"
               >
                 <div>
-                  <p className="font-medium">
-                    ₩{s.amount.toLocaleString()}
-                  </p>
+                  <p className="font-medium">{s.month}</p>
                   <p className="text-xs text-gray-400">
-                    {new Date(s.created_at).toLocaleDateString("ko-KR")}
+                    {s.count}건 · ₩{s.total.toLocaleString()}
                   </p>
                 </div>
-                <span
-                  className={`text-xs px-2 py-0.5 rounded ${
-                    s.status === "completed"
-                      ? "bg-green-50 text-green-600"
-                      : "bg-yellow-50 text-yellow-600"
-                  }`}
-                >
-                  {s.status === "completed" ? "완료" : "대기중"}
-                </span>
+                <div className="text-right text-xs">
+                  <p className="text-green-600">정산 ₩{s.settled.toLocaleString()}</p>
+                  {s.unsettled > 0 && (
+                    <p className="text-yellow-600">미정산 ₩{s.unsettled.toLocaleString()}</p>
+                  )}
+                </div>
               </div>
             ))}
           </div>
