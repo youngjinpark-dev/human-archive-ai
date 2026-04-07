@@ -5,11 +5,10 @@ import { embedText, embedTexts } from "@/lib/embedding";
 import { transcribeAudio } from "@/lib/llm";
 import { extractJudgmentPatterns } from "@/lib/judgment-extractor";
 import { NextResponse } from "next/server";
-import { after } from "next/server";
 
 export const maxDuration = 300;
 
-// POST /api/files/[id]/process — STT + 임베딩 (백그라운드 처리)
+// POST /api/files/[id]/process — STT + 임베딩 + 판단 패턴 추출
 export async function POST(
   _request: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -32,20 +31,6 @@ export async function POST(
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
-  // 즉시 응답 반환 — 처리는 after()로 백그라운드에서 계속
-  after(async () => {
-    await processUpload(id, upload);
-  });
-
-  return NextResponse.json({
-    upload_id: id,
-    status: "processing",
-    message: "처리가 시작되었습니다. 페이지를 나가도 백그라운드에서 계속됩니다.",
-  });
-}
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function processUpload(id: string, upload: any) {
   const serviceClient = createServiceClient();
 
   try {
@@ -74,17 +59,24 @@ async function processUpload(id: string, upload: any) {
       .update({ transcript, status: "embedding" })
       .eq("id", id);
 
-    // 4. 청킹 + 임베딩
+    // 4. 기존 청크 삭제 (재처리 시 중복 방지)
+    await serviceClient
+      .from("chunks")
+      .delete()
+      .eq("persona_id", upload.persona_id)
+      .eq("metadata->>source", upload.file_name);
+
+    // 5. 청킹 + 임베딩
     const chunks = chunkText(transcript, {
       source: upload.file_name,
       type: "audio_transcript",
     });
 
     if (chunks.length > 0) {
-      const texts = chunks.map((c: { text: string }) => c.text);
+      const texts = chunks.map((c) => c.text);
       const embeddings = await embedTexts(texts);
 
-      const rows = chunks.map((c: { text: string; metadata: Record<string, unknown> }, i: number) => ({
+      const rows = chunks.map((c, i) => ({
         persona_id: upload.persona_id,
         content: c.text,
         embedding: JSON.stringify(embeddings[i]),
@@ -94,11 +86,10 @@ async function processUpload(id: string, upload: any) {
       await serviceClient.from("chunks").insert(rows);
     }
 
-    // 5. 판단 패턴 추출 (framework 없으면 자동 생성)
+    // 6. 판단 패턴 추출 (framework 없으면 자동 생성)
+    let extractedCount = 0;
     if (transcript.length > 50) {
       try {
-        console.log(`[process] Starting pattern extraction for ${id}, transcript length: ${transcript.length}`);
-
         let framework = await serviceClient
           .from("judgment_frameworks")
           .select("*")
@@ -107,18 +98,22 @@ async function processUpload(id: string, upload: any) {
           .then((r) => r.data);
 
         if (!framework) {
-          console.log(`[process] No framework found, creating one for persona ${upload.persona_id}`);
           const { data: newFw, error: fwError } = await serviceClient
             .from("judgment_frameworks")
             .insert({ persona_id: upload.persona_id, status: "building" })
             .select()
             .single();
-          if (fwError) console.error(`[process] Framework creation failed:`, fwError);
+          if (fwError) {
+            console.error("Framework creation failed:", fwError);
+          }
           framework = newFw;
         }
 
         if (framework) {
-          console.log(`[process] Framework ${framework.id}, extracting patterns...`);
+          // 기존 audio 소스 패턴 삭제 (재처리 시 중복 방지)
+          await serviceClient.from("if_then_patterns").delete().eq("source_id", id);
+          await serviceClient.from("experience_stories").delete().eq("source_id", id);
+
           const { data: existingAxes } = await serviceClient
             .from("judgment_axes")
             .select("name")
@@ -126,7 +121,6 @@ async function processUpload(id: string, upload: any) {
           const axesNames = (existingAxes ?? []).map((a: { name: string }) => a.name);
 
           const extraction = await extractJudgmentPatterns(transcript, axesNames);
-          console.log(`[process] Extracted: ${extraction.newAxes.length} axes, ${extraction.newPatterns.length} patterns, ${extraction.newStories.length} stories`);
 
           for (const axis of extraction.newAxes) {
             await serviceClient.from("judgment_axes").insert({
@@ -185,6 +179,11 @@ async function processUpload(id: string, upload: any) {
             });
           }
 
+          extractedCount =
+            extraction.newAxes.length +
+            extraction.newPatterns.length +
+            extraction.newStories.length;
+
           // framework 상태를 ready로 변경
           if (framework.status === "building") {
             await serviceClient
@@ -194,21 +193,30 @@ async function processUpload(id: string, upload: any) {
           }
         }
       } catch (extractError) {
-        console.error(`[process] Pattern extraction failed for ${id}:`, extractError);
-        // 추출 실패해도 기존 파이프라인 결과는 유지
+        console.error("Pattern extraction failed:", extractError);
       }
     }
 
-    // 6. 완료
+    // 7. 완료
     await serviceClient
       .from("file_uploads")
       .update({ status: "done" })
       .eq("id", id);
+
+    return NextResponse.json({
+      success: true,
+      chunks_count: chunks.length,
+      transcript_length: transcript.length,
+      judgment_extracted: extractedCount,
+    });
   } catch (error) {
     await serviceClient
       .from("file_uploads")
       .update({ status: "error" })
       .eq("id", id);
-    console.error("Process error:", error);
+
+    const message = error instanceof Error ? error.message : "Processing failed";
+    console.error("Process error:", message);
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

@@ -104,8 +104,8 @@ export default function FilesPage() {
     if (processingIds.has(fileId)) return; // 중복 클릭 방지
     setProcessingIds((prev) => new Set(prev).add(fileId));
 
-    // 처리를 fire-and-forget으로 시작
-    fetch(`/api/files/${fileId}/process`, { method: "POST" });
+    // 처리 시작 (keepalive: 페이지 이탈 시에도 요청 유지)
+    fetch(`/api/files/${fileId}/process`, { method: "POST", keepalive: true });
 
     // 처리 중 상태를 폴링으로 반영
     const poll = setInterval(async () => {
