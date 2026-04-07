@@ -1,13 +1,19 @@
 "use client";
 
-import type { Persona } from "@/types";
+import type { Persona, FileUpload } from "@/types";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
+interface KnowledgeStats {
+  chunks: number;
+  files: FileUpload[];
+}
+
 export default function PersonaDetailPage() {
   const { id } = useParams<{ id: string }>();
   const [persona, setPersona] = useState<Persona | null>(null);
+  const [knowledge, setKnowledge] = useState<KnowledgeStats | null>(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
@@ -20,6 +26,17 @@ export default function PersonaDetailPage() {
       .then(setPersona)
       .catch(() => router.push("/personas"))
       .finally(() => setLoading(false));
+
+    // 지식 현황 로드
+    (async () => {
+      const { createClient } = await import("@/lib/supabase/client");
+      const supabase = createClient();
+      const [{ count }, { data: files }] = await Promise.all([
+        supabase.from("chunks").select("*", { count: "exact", head: true }).eq("persona_id", id),
+        supabase.from("file_uploads").select("*").eq("persona_id", id).order("created_at", { ascending: false }),
+      ]);
+      setKnowledge({ chunks: count ?? 0, files: files ?? [] });
+    })();
   }, [id, router]);
 
   async function handleDelete() {
@@ -96,6 +113,39 @@ export default function PersonaDetailPage() {
           </p>
         </Link>
       </div>
+
+      {/* 아카이빙된 지식 현황 */}
+      {knowledge && (knowledge.chunks > 0 || knowledge.files.length > 0) && (
+        <div className="mb-8 border dark:border-slate-700 rounded-lg p-6 bg-slate-50 dark:bg-slate-800">
+          <h2 className="font-semibold text-lg mb-4 dark:text-white">아카이빙된 지식</h2>
+          <div className="grid grid-cols-2 gap-4 mb-4">
+            <div className="text-center p-3 bg-white dark:bg-slate-900 rounded-lg border dark:border-slate-700">
+              <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">{knowledge.chunks}</p>
+              <p className="text-sm text-slate-500 dark:text-slate-400">지식 청크</p>
+            </div>
+            <div className="text-center p-3 bg-white dark:bg-slate-900 rounded-lg border dark:border-slate-700">
+              <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">{knowledge.files.length}</p>
+              <p className="text-sm text-slate-500 dark:text-slate-400">업로드 파일</p>
+            </div>
+          </div>
+          {knowledge.files.length > 0 && (
+            <div className="space-y-2">
+              {knowledge.files.map((f) => (
+                <div key={f.id} className="flex items-center justify-between text-sm">
+                  <span className="text-slate-700 dark:text-slate-300 truncate max-w-xs">{f.file_name}</span>
+                  <span className={`text-xs ${
+                    f.status === "done" ? "text-green-600 dark:text-green-400" :
+                    f.status === "error" ? "text-red-600 dark:text-red-400" :
+                    "text-yellow-600 dark:text-yellow-400"
+                  }`}>
+                    {f.status === "done" ? "완료" : f.status === "error" ? "오류" : "처리 중..."}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* 페르소나 상세 */}
       <div className="space-y-6">
