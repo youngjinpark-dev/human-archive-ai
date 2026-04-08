@@ -30,16 +30,16 @@ export default function PurchasesPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold mb-6">구매 내역</h1>
+      <h1 className="text-2xl font-bold mb-6 dark:text-white">구매 내역</h1>
 
       {loading ? (
-        <p className="text-gray-500">로딩 중...</p>
+        <p className="text-slate-500 dark:text-slate-400">로딩 중...</p>
       ) : purchases.length === 0 ? (
-        <div className="text-center py-16 text-gray-400">
+        <div className="text-center py-16 text-slate-400 dark:text-slate-500">
           <p className="text-lg">구매한 페르소나가 없습니다.</p>
           <Link
             href="/store"
-            className="inline-block mt-3 text-sm text-blue-600 hover:underline"
+            className="inline-block mt-3 text-sm text-blue-600 dark:text-blue-400 hover:underline"
           >
             스토어 둘러보기
           </Link>
@@ -47,14 +47,14 @@ export default function PurchasesPage() {
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {purchases.map((p) => (
-            <div key={p.id} className="border rounded-lg p-5">
-              <h3 className="font-semibold text-lg">
+            <div key={p.id} className="border dark:border-slate-700 rounded-lg p-5 dark:bg-slate-900">
+              <h3 className="font-semibold text-lg dark:text-white">
                 {p.listing_title ?? p.persona_name ?? "페르소나"}
               </h3>
-              <p className="text-sm text-gray-400 mt-1">
+              <p className="text-sm text-slate-400 dark:text-slate-500 mt-1">
                 {new Date(p.created_at).toLocaleDateString("ko-KR")}
               </p>
-              <p className="text-sm text-gray-500 mt-1">
+              <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
                 ₩{p.amount_krw.toLocaleString()}
               </p>
               <Link

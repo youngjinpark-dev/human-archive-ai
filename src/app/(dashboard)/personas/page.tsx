@@ -22,7 +22,7 @@ export default function PersonasPage() {
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold">페르소나</h1>
+        <h1 className="text-2xl font-bold dark:text-white">페르소나</h1>
         <Link
           href="/personas/new"
           className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition"
@@ -32,9 +32,9 @@ export default function PersonasPage() {
       </div>
 
       {loading ? (
-        <p className="text-gray-500">로딩 중...</p>
+        <p className="text-slate-500 dark:text-slate-400">로딩 중...</p>
       ) : personas.length === 0 ? (
-        <div className="text-center py-16 text-gray-400">
+        <div className="text-center py-16 text-slate-400 dark:text-slate-500">
           <p className="text-lg">아직 페르소나가 없습니다.</p>
           <p className="mt-1">전문가의 지식을 아카이빙해 보세요.</p>
         </div>

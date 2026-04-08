@@ -42,7 +42,7 @@ export default function PublishPage() {
       .finally(() => setLoading(false));
   }, [id, router]);
 
-  if (loading) return <p className="text-gray-500">로딩 중...</p>;
+  if (loading) return <p className="text-slate-500 dark:text-slate-400">로딩 중...</p>;
   if (!persona) return null;
 
   const quality: QualityGate = {
@@ -101,11 +101,11 @@ export default function PublishPage() {
 
   return (
     <div className="max-w-lg mx-auto">
-      <h1 className="text-2xl font-bold mb-6">스토어에 등록하기</h1>
+      <h1 className="text-2xl font-bold mb-6 dark:text-white">스토어에 등록하기</h1>
 
       {/* Quality Gate Checklist */}
-      <div className="border rounded-lg p-4 mb-6">
-        <h2 className="font-semibold mb-3">품질 체크리스트</h2>
+      <div className="border dark:border-slate-700 rounded-lg p-4 mb-6 dark:bg-slate-900">
+        <h2 className="font-semibold mb-3 dark:text-white">품질 체크리스트</h2>
         <ul className="space-y-2 text-sm">
           <li className="flex items-center gap-2">
             <span>{quality.interviewDone ? "✅" : "❌"}</span>
@@ -136,7 +136,7 @@ export default function PublishPage() {
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
             제목
           </label>
           <input
@@ -144,24 +144,24 @@ export default function PublishPage() {
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             required
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+            className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none dark:bg-slate-800 dark:text-white"
           />
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
             부제목
           </label>
           <input
             type="text"
             value={subtitle}
             onChange={(e) => setSubtitle(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+            className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none dark:bg-slate-800 dark:text-white"
           />
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
             설명
           </label>
           <textarea
@@ -169,19 +169,19 @@ export default function PublishPage() {
             onChange={(e) => setDescription(e.target.value)}
             required
             rows={4}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none resize-none"
+            className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none dark:bg-slate-800 dark:text-white resize-none"
           />
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
             카테고리
           </label>
           <select
             value={category}
             onChange={(e) => setCategory(e.target.value)}
             required
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+            className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none dark:bg-slate-800 dark:text-white"
           >
             <option value="">선택하세요</option>
             {STORE_CATEGORIES.map((cat) => (
@@ -193,7 +193,7 @@ export default function PublishPage() {
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
             태그 (쉼표로 구분)
           </label>
           <input
@@ -201,7 +201,7 @@ export default function PublishPage() {
             value={tagsInput}
             onChange={(e) => setTagsInput(e.target.value)}
             placeholder="예: AI, 개발, 멘토링"
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+            className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none dark:bg-slate-800 dark:text-white"
           />
         </div>
 

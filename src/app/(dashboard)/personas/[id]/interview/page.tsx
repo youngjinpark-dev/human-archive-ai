@@ -70,28 +70,28 @@ export default function InterviewPage() {
     setLoading(false);
   }
 
-  if (starting) return <p className="text-gray-500">인터뷰 준비 중...</p>;
+  if (starting) return <p className="text-slate-500 dark:text-slate-400">인터뷰 준비 중...</p>;
 
   return (
     <div className="max-w-2xl">
-      <h1 className="text-2xl font-bold mb-6">전문가 인터뷰</h1>
+      <h1 className="text-2xl font-bold mb-6 dark:text-white">전문가 인터뷰</h1>
 
       {/* 이전 답변 */}
       <div className="space-y-4 mb-6">
         {state.answers.map((a, i) => (
           <div key={i} className="space-y-2">
-            <div className="bg-blue-50 p-3 rounded-lg">
-              <p className="text-sm font-medium text-blue-800">{a.question}</p>
+            <div className="bg-blue-50 dark:bg-blue-950 p-3 rounded-lg">
+              <p className="text-sm font-medium text-blue-800 dark:text-blue-300">{a.question}</p>
             </div>
-            <div className="bg-gray-50 p-3 rounded-lg ml-4">
-              <p className="text-sm text-gray-700">{a.answer}</p>
+            <div className="bg-slate-50 dark:bg-slate-800 p-3 rounded-lg ml-4">
+              <p className="text-sm text-slate-700 dark:text-slate-300">{a.answer}</p>
             </div>
           </div>
         ))}
       </div>
 
       {state.completed ? (
-        <div className="text-center py-8 border rounded-lg bg-green-50">
+        <div className="text-center py-8 border dark:border-slate-700 rounded-lg bg-green-50 dark:bg-green-950">
           <p className="text-lg font-medium text-green-700">
             인터뷰가 완료되었습니다!
           </p>
@@ -101,8 +101,8 @@ export default function InterviewPage() {
         </div>
       ) : (
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="bg-blue-50 p-4 rounded-lg">
-            <p className="font-medium text-blue-800">{state.question}</p>
+          <div className="bg-blue-50 dark:bg-blue-950 p-4 rounded-lg">
+            <p className="font-medium text-blue-800 dark:text-blue-300">{state.question}</p>
           </div>
 
           <textarea
@@ -110,7 +110,7 @@ export default function InterviewPage() {
             onChange={(e) => setAnswer(e.target.value)}
             rows={4}
             placeholder="답변을 입력하세요..."
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none resize-none"
+            className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none resize-none dark:bg-slate-800 dark:text-white"
           />
 
           <button

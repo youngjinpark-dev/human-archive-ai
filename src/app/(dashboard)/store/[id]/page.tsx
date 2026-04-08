@@ -84,7 +84,7 @@ export default function StoreDetailPage() {
     load();
   }, [id, router]);
 
-  if (loading) return <p className="text-gray-500">로딩 중...</p>;
+  if (loading) return <p className="text-slate-500 dark:text-slate-400">로딩 중...</p>;
   if (!listing) return null;
 
   const isOwner = currentUserId === listing.seller_id;
@@ -98,19 +98,19 @@ export default function StoreDetailPage() {
       <div className="flex-1 min-w-0">
         <div className="mb-6">
           <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-bold">{listing.title}</h1>
+            <h1 className="text-2xl font-bold dark:text-white">{listing.title}</h1>
             {isVerified ? (
               <span className="shrink-0 text-xs bg-green-50 text-green-600 border border-green-200 px-2 py-0.5 rounded-full">
                 검증된 페르소나
               </span>
             ) : (
-              <span className="shrink-0 text-xs bg-gray-100 text-gray-500 border border-gray-200 px-2 py-0.5 rounded-full">
+              <span className="shrink-0 text-xs bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700 px-2 py-0.5 rounded-full">
                 기본 페르소나
               </span>
             )}
           </div>
           {listing.subtitle && (
-            <p className="text-gray-500 mt-1">{listing.subtitle}</p>
+            <p className="text-slate-500 dark:text-slate-400 mt-1">{listing.subtitle}</p>
           )}
           {!isVerified && (
             <p className="mt-2 text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
@@ -120,7 +120,7 @@ export default function StoreDetailPage() {
         </div>
 
         {listing.category && (
-          <span className="inline-block text-xs bg-blue-50 text-blue-600 px-2 py-0.5 rounded mb-4">
+          <span className="inline-block text-xs bg-blue-50 dark:bg-blue-950 text-blue-600 dark:text-blue-400 px-2 py-0.5 rounded mb-4">
             {listing.category}
           </span>
         )}
@@ -130,7 +130,7 @@ export default function StoreDetailPage() {
             {listing.tags.map((tag, i) => (
               <span
                 key={i}
-                className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded"
+                className="text-xs bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 px-2 py-0.5 rounded"
               >
                 #{tag}
               </span>
@@ -140,8 +140,8 @@ export default function StoreDetailPage() {
 
         {listing.description && (
           <section className="mb-6">
-            <h2 className="font-semibold text-lg mb-2">설명</h2>
-            <p className="text-gray-700 whitespace-pre-wrap">
+            <h2 className="font-semibold text-lg mb-2 dark:text-white">설명</h2>
+            <p className="text-slate-700 dark:text-slate-300 whitespace-pre-wrap">
               {listing.description}
             </p>
           </section>
@@ -150,16 +150,16 @@ export default function StoreDetailPage() {
         {/* Quality indicators */}
         {qualityScore && (
           <section className="mb-6">
-            <h2 className="font-semibold text-lg mb-2">품질 지표</h2>
+            <h2 className="font-semibold text-lg mb-2 dark:text-white">품질 지표</h2>
             <div className="grid grid-cols-2 gap-3">
-              <div className="border rounded-lg p-3">
-                <p className="text-sm text-gray-500">판단 원칙</p>
-                <p className="font-semibold">
+              <div className="border dark:border-slate-700 rounded-lg p-3 dark:bg-slate-900">
+                <p className="text-sm text-slate-500 dark:text-slate-400">판단 원칙</p>
+                <p className="font-semibold dark:text-white">
                   {qualityScore.principles_count}개
                 </p>
               </div>
-              <div className="border rounded-lg p-3">
-                <p className="text-sm text-gray-500">의사결정 시나리오</p>
+              <div className="border dark:border-slate-700 rounded-lg p-3 dark:bg-slate-900">
+                <p className="text-sm text-slate-500 dark:text-slate-400">의사결정 시나리오</p>
                 <p className="font-semibold">
                   {qualityScore.scenarios_count}개
                 </p>
@@ -169,7 +169,7 @@ export default function StoreDetailPage() {
         )}
 
         {/* Stats */}
-        <div className="flex gap-4 text-sm text-gray-500 mb-6">
+        <div className="flex gap-4 text-sm text-slate-500 dark:text-slate-400 mb-6">
           <span>조회 {listing.view_count}</span>
           <span>시식 {listing.trial_count}</span>
           <span>구매 {listing.purchase_count}</span>
@@ -183,7 +183,7 @@ export default function StoreDetailPage() {
           {isOwner && (
             <Link
               href={`/store/${id}`}
-              className="px-4 py-2 border border-gray-300 rounded-lg text-sm text-gray-600 hover:bg-gray-50 transition"
+              className="px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition"
             >
               수정하기
             </Link>
@@ -211,7 +211,7 @@ export default function StoreDetailPage() {
 
       {/* Sidebar: Trial Chat */}
       <div className="lg:w-[380px] shrink-0">
-        <div className="border rounded-lg p-4 sticky top-24 h-[500px]">
+        <div className="border dark:border-slate-700 rounded-lg p-4 sticky top-24 h-[500px] dark:bg-slate-900">
           <TrialChat listingId={id} personaName={personaName} />
         </div>
       </div>

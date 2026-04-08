@@ -75,22 +75,22 @@ export default function PurchasePage() {
     }
   }
 
-  if (loading) return <p className="text-gray-500">로딩 중...</p>;
+  if (loading) return <p className="text-slate-500 dark:text-slate-400">로딩 중...</p>;
   if (!listing) return null;
 
   return (
     <div className="max-w-md mx-auto">
-      <h1 className="text-2xl font-bold mb-6">구매 확인</h1>
+      <h1 className="text-2xl font-bold mb-6 dark:text-white">구매 확인</h1>
 
-      <div className="border rounded-lg p-6 mb-6">
-        <h2 className="font-semibold text-lg mb-1">{listing.title}</h2>
-        <p className="text-sm text-gray-500 mb-4">
+      <div className="border dark:border-slate-700 rounded-lg p-6 mb-6 dark:bg-slate-900">
+        <h2 className="font-semibold text-lg mb-1 dark:text-white">{listing.title}</h2>
+        <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">
           {listing.personas?.name ?? "페르소나"}
         </p>
 
-        <div className="border-t pt-4">
+        <div className="border-t dark:border-slate-700 pt-4">
           <div className="flex justify-between items-center">
-            <span className="text-gray-600">결제 금액</span>
+            <span className="text-slate-600 dark:text-slate-300">결제 금액</span>
             <span className="text-xl font-bold">
               {listing.is_free
                 ? "무료"
@@ -120,7 +120,7 @@ export default function PurchasePage() {
 
       <button
         onClick={() => router.back()}
-        className="w-full mt-3 py-2 text-sm text-gray-500 hover:text-gray-700 transition"
+        className="w-full mt-3 py-2 text-sm text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300 transition"
       >
         돌아가기
       </button>

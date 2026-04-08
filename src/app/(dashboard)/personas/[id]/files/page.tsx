@@ -140,7 +140,7 @@ export default function FilesPage() {
   };
 
   const statusColor: Record<string, string> = {
-    uploaded: "text-gray-500 dark:text-gray-400",
+    uploaded: "text-slate-500 dark:text-slate-400",
     transcribing: "text-yellow-600 dark:text-yellow-400",
     embedding: "text-blue-600 dark:text-blue-400",
     done: "text-green-600 dark:text-green-400",
@@ -207,7 +207,7 @@ export default function FilesPage() {
                     {f.status === "uploaded" && !isProcessing && (
                       <button
                         onClick={() => processFile(f.id)}
-                        className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
+                        className="text-sm text-blue-600 dark:text-blue-400 hover:underline whitespace-nowrap"
                       >
                         처리 시작
                       </button>

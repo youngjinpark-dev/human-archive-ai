@@ -256,14 +256,14 @@ export default function ChatPage() {
 
   return (
     <div className="flex flex-col h-[calc(100vh-8rem)]">
-      <h1 className="text-lg font-bold mb-4">
+      <h1 className="text-lg font-bold mb-4 dark:text-white">
         {personaName && `${personaName}과(와) 대화`}
       </h1>
 
       {/* 메시지 영역 */}
       <div className="flex-1 overflow-y-auto space-y-4 mb-4">
         {messages.length === 0 && (
-          <div className="text-center text-gray-400 py-16">
+          <div className="text-center text-slate-400 dark:text-slate-500 py-16">
             <p>페르소나에게 질문해 보세요.</p>
           </div>
         )}
@@ -276,11 +276,11 @@ export default function ChatPage() {
               className={`max-w-[80%] rounded-lg px-4 py-3 ${
                 m.role === "user"
                   ? "bg-blue-600 text-white"
-                  : "bg-gray-100 text-gray-800"
+                  : "bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200"
               }`}
             >
               {m.role === "assistant" && !m.content && loading ? (
-                <p className="text-sm text-gray-400 animate-pulse">
+                <p className="text-sm text-slate-400 dark:text-slate-500 animate-pulse">
                   생각하는 중...
                 </p>
               ) : (
@@ -315,7 +315,7 @@ export default function ChatPage() {
           onChange={(e) => setInput(e.target.value)}
           placeholder="메시지를 입력하세요..."
           disabled={loading}
-          className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+          className="flex-1 px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none dark:bg-slate-800 dark:text-white"
         />
         <button
           type="submit"

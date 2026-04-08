@@ -129,13 +129,13 @@ export default function TrialChat({
       <div className="mb-3">
         <Disclaimer />
       </div>
-      <h3 className="font-semibold text-sm mb-2">
+      <h3 className="font-semibold text-sm mb-2 dark:text-white">
         {personaName} 시식 대화
       </h3>
 
       <div className="flex-1 overflow-y-auto space-y-3 mb-3 min-h-[200px]">
         {messages.length === 0 && (
-          <div className="text-center text-gray-400 py-8 text-sm">
+          <div className="text-center text-slate-400 dark:text-slate-500 py-8 text-sm">
             <p>페르소나에게 질문해 보세요.</p>
           </div>
         )}
@@ -148,11 +148,11 @@ export default function TrialChat({
               className={`max-w-[85%] rounded-lg px-3 py-2 ${
                 m.role === "user"
                   ? "bg-blue-600 text-white"
-                  : "bg-gray-100 text-gray-800"
+                  : "bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200"
               }`}
             >
               {m.role === "assistant" && !m.content && loading ? (
-                <p className="text-xs text-gray-400 animate-pulse">
+                <p className="text-xs text-slate-400 dark:text-slate-500 animate-pulse">
                   생각하는 중...
                 </p>
               ) : (
@@ -167,14 +167,14 @@ export default function TrialChat({
       </div>
 
       {!limitReached && (
-        <p className="text-xs text-gray-400 mb-2 text-center">
+        <p className="text-xs text-slate-400 dark:text-slate-500 mb-2 text-center">
           {messagesRemaining}회 남음
         </p>
       )}
 
       {limitReached ? (
-        <div className="text-center border rounded-lg p-4 bg-gray-50">
-          <p className="text-sm text-gray-600 mb-3">
+        <div className="text-center border dark:border-slate-700 rounded-lg p-4 bg-slate-50 dark:bg-slate-800">
+          <p className="text-sm text-slate-600 dark:text-slate-300 mb-3">
             로그인하여 구매하면 무제한 대화가 가능합니다
           </p>
           <Link
@@ -192,7 +192,7 @@ export default function TrialChat({
             onChange={(e) => setInput(e.target.value)}
             placeholder="메시지를 입력하세요..."
             disabled={loading}
-            className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+            className="flex-1 px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none dark:bg-slate-800 dark:text-white"
           />
           <button
             type="submit"
