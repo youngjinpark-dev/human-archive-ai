@@ -3,7 +3,7 @@
 import type { Persona, FileUpload } from "@/types";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 interface FrameworkAxis {
   name: string;
@@ -30,7 +30,37 @@ export default function PersonaDetailPage() {
   const [persona, setPersona] = useState<Persona | null>(null);
   const [knowledge, setKnowledge] = useState<KnowledgeStats | null>(null);
   const [loading, setLoading] = useState(true);
+  const [regenerating, setRegenerating] = useState<Set<string>>(new Set());
   const router = useRouter();
+
+  const reloadPersona = useCallback(() => {
+    fetch(`/api/personas/${id}`).then((r) => r.ok ? r.json() : null).then((d) => d && setPersona(d));
+  }, [id]);
+
+  async function regenerate(items: string[]) {
+    setRegenerating(new Set(items));
+    try {
+      await fetch(`/api/personas/${id}/regenerate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ items }),
+      });
+      reloadPersona();
+      // 프레임워크도 리로드
+      const { createClient } = await import("@/lib/supabase/client");
+      const sb = createClient();
+      const { data: fw } = await sb.from("judgment_frameworks").select("id, status").eq("persona_id", id).single();
+      if (fw) {
+        const [{ data: ax }, { data: pt }] = await Promise.all([
+          sb.from("judgment_axes").select("name, description, weight").eq("framework_id", fw.id).order("weight", { ascending: false }),
+          sb.from("if_then_patterns").select("condition, action, reasoning").eq("framework_id", fw.id),
+        ]);
+        setKnowledge((prev) => prev ? { ...prev, axes: ax ?? [], patterns: pt ?? [], frameworkStatus: fw.status } : prev);
+      }
+    } finally {
+      setRegenerating(new Set());
+    }
+  }
 
   useEffect(() => {
     fetch(`/api/personas/${id}`)
@@ -179,6 +209,49 @@ export default function PersonaDetailPage() {
             </div>
           )}
         </div>
+      )}
+
+      {/* 미생성 항목 재생성 버튼 */}
+      {knowledge && knowledge.files.length > 0 && (
+        (() => {
+          const missing: { key: string; label: string }[] = [];
+          if (!persona.principles || persona.principles.length === 0) missing.push({ key: "principles", label: "판단 원칙" });
+          if (!persona.decision_scenarios || persona.decision_scenarios.length === 0) missing.push({ key: "scenarios", label: "의사결정 시나리오" });
+          if (!persona.style) missing.push({ key: "style", label: "대화 스타일" });
+          if (knowledge.axes.length === 0) missing.push({ key: "axes", label: "판단 축" });
+          if (knowledge.patterns.length === 0) missing.push({ key: "patterns", label: "판단 패턴" });
+
+          if (missing.length === 0) return null;
+
+          return (
+            <div className="mb-8 p-4 border border-yellow-200 dark:border-yellow-800 rounded-lg bg-yellow-50 dark:bg-yellow-950">
+              <p className="text-sm text-yellow-800 dark:text-yellow-200 mb-3">
+                아직 생성되지 않은 항목이 있습니다. 트랜스크립트에서 개별 추출할 수 있습니다.
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {missing.map((m) => (
+                  <button
+                    key={m.key}
+                    onClick={() => regenerate([m.key])}
+                    disabled={regenerating.size > 0}
+                    className="px-3 py-1.5 text-sm bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 disabled:opacity-50 transition whitespace-nowrap"
+                  >
+                    {regenerating.has(m.key) ? `${m.label} 생성 중...` : `${m.label} 생성`}
+                  </button>
+                ))}
+                {missing.length > 1 && (
+                  <button
+                    onClick={() => regenerate(missing.map((m) => m.key))}
+                    disabled={regenerating.size > 0}
+                    className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition whitespace-nowrap"
+                  >
+                    {regenerating.size > 0 ? "생성 중..." : "전체 생성"}
+                  </button>
+                )}
+              </div>
+            </div>
+          );
+        })()
       )}
 
       {/* 판단 프레임워크 (음성/인터뷰에서 추출) */}
