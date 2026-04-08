@@ -43,25 +43,25 @@ export default function Home() {
         {/* Hero Section */}
         <section className="relative px-6 py-20 md:py-32 max-w-7xl mx-auto">
           <div className="max-w-3xl mx-auto text-center">
-            <h1 className="text-4xl md:text-5xl lg:text-6xl font-extrabold tracking-tight leading-tight mb-6 text-slate-900 dark:text-white">
+            <h1 className="text-3xl md:text-5xl lg:text-6xl font-extrabold tracking-tight leading-tight mb-6 text-slate-900 dark:text-white break-keep">
               전문가의 판단 체계를{" "}
-              <span className="text-blue-600 dark:text-blue-400">AI 페르소나</span>로
+              <span className="text-blue-600 dark:text-blue-400 whitespace-nowrap">AI 페르소나</span>로
               아카이빙합니다
             </h1>
             <p className="text-lg md:text-xl text-slate-600 dark:text-slate-300 mb-10 leading-relaxed max-w-2xl mx-auto">
               은퇴하는 전문가의 경험과 노하우를 보존하고, 누구나 시공간의 제약
               없이 대화할 수 있게 합니다.
             </p>
-            <div className="flex flex-wrap gap-4 justify-center">
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Link
                 href="/login"
-                className="bg-blue-600 text-white px-8 py-4 rounded-xl text-lg font-bold shadow-lg shadow-blue-600/20 hover:bg-blue-700 transition-colors"
+                className="bg-blue-600 text-white px-8 py-4 rounded-xl text-lg font-bold shadow-lg shadow-blue-600/20 hover:bg-blue-700 transition-colors text-center"
               >
                 시작하기
               </Link>
               <Link
                 href="/signup"
-                className="border-2 border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-200 px-8 py-4 rounded-xl text-lg font-bold hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+                className="border-2 border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-200 px-8 py-4 rounded-xl text-lg font-bold hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors text-center"
               >
                 회원가입
               </Link>
@@ -229,7 +229,7 @@ export default function Home() {
               </h2>
               <div className="w-12 h-1.5 bg-blue-600 rounded-full mx-auto" />
             </div>
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+            <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-6">
               {[
                 {
                   icon: "M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z",
