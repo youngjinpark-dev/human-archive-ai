@@ -48,9 +48,10 @@ export default function Home() {
               <span className="text-blue-600 dark:text-blue-400 whitespace-nowrap">AI 페르소나</span>로
               아카이빙합니다
             </h1>
-            <p className="text-lg md:text-xl text-slate-600 dark:text-slate-300 mb-10 leading-relaxed max-w-2xl mx-auto">
-              은퇴하는 전문가의 경험과 노하우를 보존하고, 누구나 시공간의 제약
-              없이 대화할 수 있게 합니다.
+            <p className="text-lg md:text-xl text-slate-600 dark:text-slate-300 mb-10 leading-relaxed max-w-2xl mx-auto break-keep">
+              은퇴하는 전문가의 경험과 노하우를 보존하고,
+              <br className="hidden sm:block" />
+              누구나 시공간의 제약 없이 대화할 수 있게 합니다.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Link
@@ -131,9 +132,10 @@ export default function Home() {
               <h2 className="text-3xl font-extrabold tracking-tight mb-4 text-slate-900 dark:text-white">
                 AI 코딩 도구에서 바로 연결하세요
               </h2>
-              <p className="text-lg text-slate-600 dark:text-slate-300 max-w-2xl mx-auto">
-                Claude Code, Cursor 등 MCP 지원 도구에서 설치 없이 바로
-                연동할 수 있습니다.
+              <p className="text-lg text-slate-600 dark:text-slate-300 max-w-2xl mx-auto break-keep">
+                Claude Code, Cursor 등 MCP 지원 도구에서
+                <br className="hidden sm:block" />
+                설치 없이 바로 연동할 수 있습니다.
               </p>
             </div>
             <div className="bg-slate-900 dark:bg-black rounded-2xl p-8 shadow-2xl border border-transparent dark:border-slate-700">
@@ -168,8 +170,9 @@ export default function Home() {
               <h2 className="text-3xl font-extrabold tracking-tight mb-4 text-slate-900 dark:text-white">
                 AI가 전문가가 됩니다
               </h2>
-              <p className="text-lg text-slate-600 dark:text-slate-300 max-w-2xl mx-auto">
+              <p className="text-lg text-slate-600 dark:text-slate-300 max-w-2xl mx-auto break-keep">
                 MCP를 연결하면 AI가 전문가의 판단 체계를 내재화하고,
+                <br className="hidden sm:block" />
                 그 전문가의 관점으로 대화합니다.
               </p>
             </div>
@@ -264,17 +267,19 @@ export default function Home() {
               ].map((feature) => (
                 <div
                   key={feature.title}
-                  className="bg-white dark:bg-slate-800 p-8 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 hover:shadow-xl hover:-translate-y-1 transition-all duration-300"
+                  className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex items-start gap-4 sm:block"
                 >
-                  <div className="w-14 h-14 bg-blue-50 dark:bg-blue-950 text-blue-600 dark:text-blue-400 rounded-2xl flex items-center justify-center mb-6">
-                    <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <div className="w-12 h-12 sm:w-14 sm:h-14 bg-blue-50 dark:bg-blue-950 text-blue-600 dark:text-blue-400 rounded-xl sm:rounded-2xl flex items-center justify-center shrink-0 sm:mb-5">
+                    <svg className="w-6 h-6 sm:w-7 sm:h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={feature.icon} />
                     </svg>
                   </div>
-                  <h3 className="text-xl font-bold mb-3 text-slate-900 dark:text-white">{feature.title}</h3>
-                  <p className="text-slate-600 dark:text-slate-300 leading-relaxed">
-                    {feature.desc}
-                  </p>
+                  <div>
+                    <h3 className="text-lg sm:text-xl font-bold mb-1 sm:mb-3 text-slate-900 dark:text-white">{feature.title}</h3>
+                    <p className="text-sm sm:text-base text-slate-600 dark:text-slate-300 leading-relaxed break-keep">
+                      {feature.desc}
+                    </p>
+                  </div>
                 </div>
               ))}
             </div>
@@ -287,12 +292,13 @@ export default function Home() {
             <div className="absolute top-0 right-0 -translate-y-1/2 translate-x-1/4 w-96 h-96 bg-blue-400 rounded-full blur-3xl opacity-20" />
             <div className="absolute bottom-0 left-0 translate-y-1/2 -translate-x-1/4 w-96 h-96 bg-white rounded-full blur-3xl opacity-10" />
             <div className="relative z-10">
-              <h2 className="text-3xl md:text-4xl font-extrabold text-white mb-6">
+              <h2 className="text-2xl md:text-4xl font-extrabold text-white mb-6 break-keep">
                 당신의 전문 지식을 미래로 연결하세요
               </h2>
-              <p className="text-blue-50 text-lg mb-12 max-w-2xl mx-auto leading-relaxed">
-                지금 바로 첫 번째 아카이브를 시작해보세요. 더 이상 지식은
-                사라지지 않습니다.
+              <p className="text-blue-50 text-lg mb-12 max-w-2xl mx-auto leading-relaxed break-keep">
+                지금 바로 첫 번째 아카이브를 시작해보세요.
+                <br className="hidden sm:block" />
+                더 이상 지식은 사라지지 않습니다.
               </p>
               <Link
                 href="/signup"
