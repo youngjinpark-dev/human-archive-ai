@@ -1,15 +1,18 @@
 "use client";
 
 import type { FileUpload } from "@/types";
-import { useParams } from "next/navigation";
+import Link from "next/link";
+import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 export default function FilesPage() {
   const { id } = useParams<{ id: string }>();
+  const router = useRouter();
   const [files, setFiles] = useState<FileUpload[]>([]);
   const [uploading, setUploading] = useState(false);
   const [dragOver, setDragOver] = useState(false);
   const [processingIds, setProcessingIds] = useState<Set<string>>(new Set());
+  const [doneFileIds, setDoneFileIds] = useState<Set<string>>(new Set());
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -125,6 +128,9 @@ export default function FilesPage() {
             next.delete(fileId);
             return next;
           });
+          if (data.status === "done") {
+            setDoneFileIds((prev) => new Set(prev).add(fileId));
+          }
           await loadFiles();
         }
       }
@@ -149,7 +155,20 @@ export default function FilesPage() {
 
   return (
     <div className="max-w-2xl">
+      <Link href={`/personas/${id}`} className="text-sm text-blue-600 dark:text-blue-400 hover:underline mb-4 inline-block">&larr; 페르소나 상세</Link>
       <h1 className="text-2xl font-bold mb-6 dark:text-white">파일 관리</h1>
+
+      {doneFileIds.size > 0 && (
+        <div className="mb-4 p-3 bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800 rounded-lg flex items-center justify-between">
+          <span className="text-sm text-green-700 dark:text-green-300">완료! 파일 처리가 끝났습니다.</span>
+          <button
+            onClick={() => router.push(`/personas/${id}`)}
+            className="text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline whitespace-nowrap ml-4"
+          >
+            페르소나 상세 페이지로 이동 &rarr;
+          </button>
+        </div>
+      )}
 
       <div
         onDrop={handleDrop}

@@ -37,6 +37,33 @@ export default function PersonaDetailPage() {
     fetch(`/api/personas/${id}`).then((r) => r.ok ? r.json() : null).then((d) => d && setPersona(d));
   }, [id]);
 
+  const reloadKnowledge = useCallback(async () => {
+    const { createClient } = await import("@/lib/supabase/client");
+    const sb = createClient();
+    const [{ count }, { data: files }, { data: fw }] = await Promise.all([
+      sb.from("chunks").select("*", { count: "exact", head: true }).eq("persona_id", id),
+      sb.from("file_uploads").select("*").eq("persona_id", id).order("created_at", { ascending: false }),
+      sb.from("judgment_frameworks").select("id, status").eq("persona_id", id).single(),
+    ]);
+    let axes: FrameworkAxis[] = [];
+    let patterns: FrameworkPattern[] = [];
+    if (fw) {
+      const [{ data: ax }, { data: pt }] = await Promise.all([
+        sb.from("judgment_axes").select("name, description, weight").eq("framework_id", fw.id).order("weight", { ascending: false }),
+        sb.from("if_then_patterns").select("condition, action, reasoning").eq("framework_id", fw.id),
+      ]);
+      axes = ax ?? [];
+      patterns = pt ?? [];
+    }
+    setKnowledge({
+      chunks: count ?? 0,
+      files: files ?? [],
+      axes,
+      patterns,
+      frameworkStatus: fw?.status ?? null,
+    });
+  }, [id]);
+
   async function regenerate(items: string[]) {
     setRegenerating(new Set(items));
     try {
@@ -44,19 +71,10 @@ export default function PersonaDetailPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ items }),
+        keepalive: true,
       });
       reloadPersona();
-      // 프레임워크도 리로드
-      const { createClient } = await import("@/lib/supabase/client");
-      const sb = createClient();
-      const { data: fw } = await sb.from("judgment_frameworks").select("id, status").eq("persona_id", id).single();
-      if (fw) {
-        const [{ data: ax }, { data: pt }] = await Promise.all([
-          sb.from("judgment_axes").select("name, description, weight").eq("framework_id", fw.id).order("weight", { ascending: false }),
-          sb.from("if_then_patterns").select("condition, action, reasoning").eq("framework_id", fw.id),
-        ]);
-        setKnowledge((prev) => prev ? { ...prev, axes: ax ?? [], patterns: pt ?? [], frameworkStatus: fw.status } : prev);
-      }
+      await reloadKnowledge();
     } finally {
       setRegenerating(new Set());
     }
@@ -114,6 +132,7 @@ export default function PersonaDetailPage() {
 
   return (
     <div>
+      <Link href="/personas" className="text-sm text-blue-600 dark:text-blue-400 hover:underline mb-4 inline-block">&larr; 페르소나 목록</Link>
       <div className="flex items-start justify-between gap-4 mb-6">
         <div className="min-w-0 flex-1">
           <h1 className="text-2xl font-bold dark:text-white">{persona.name}</h1>

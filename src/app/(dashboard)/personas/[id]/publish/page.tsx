@@ -2,6 +2,7 @@
 
 import { STORE_CATEGORIES } from "@/lib/store-constants";
 import type { Persona } from "@/types";
+import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
@@ -101,6 +102,7 @@ export default function PublishPage() {
 
   return (
     <div className="max-w-lg mx-auto">
+      <Link href={`/personas/${id}`} className="text-sm text-blue-600 dark:text-blue-400 hover:underline mb-4 inline-block">&larr; 페르소나 상세</Link>
       <h1 className="text-2xl font-bold mb-6 dark:text-white">스토어에 등록하기</h1>
 
       {/* Quality Gate Checklist */}

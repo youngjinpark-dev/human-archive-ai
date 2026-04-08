@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 
@@ -74,6 +75,7 @@ export default function InterviewPage() {
 
   return (
     <div className="max-w-2xl">
+      <Link href={`/personas/${id}`} className="text-sm text-blue-600 dark:text-blue-400 hover:underline mb-4 inline-block">&larr; 페르소나 상세</Link>
       <h1 className="text-2xl font-bold mb-6 dark:text-white">전문가 인터뷰</h1>
 
       {/* 이전 답변 */}

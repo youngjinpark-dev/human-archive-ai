@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 
@@ -256,6 +257,7 @@ export default function ChatPage() {
 
   return (
     <div className="flex flex-col h-[calc(100vh-8rem)]">
+      <Link href={`/personas/${id}`} className="text-sm text-blue-600 dark:text-blue-400 hover:underline mb-2 inline-block">&larr; 페르소나 상세</Link>
       <h1 className="text-lg font-bold mb-4 dark:text-white">
         {personaName && `${personaName}과(와) 대화`}
       </h1>
